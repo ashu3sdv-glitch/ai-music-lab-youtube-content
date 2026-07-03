@@ -154,8 +154,12 @@ export default function LongTab({ state, setState, links }) {
         <div className="card">
           <div className="card-head"><strong>3. Описание</strong></div>
           <div className="field">
-            <label>Заголовок</label>
+            <label>Заголовок — вариант A</label>
             <input value={data.description.title} onChange={(e) => patch({ description: { ...data.description, title: e.target.value } })} />
+          </div>
+          <div className="field">
+            <label>Заголовок — вариант Б (для A/Б-теста в YouTube Studio)</label>
+            <input value={data.description.titleB || ""} onChange={(e) => patch({ description: { ...data.description, titleB: e.target.value } })} />
           </div>
           <div className="field">
             <label>Описание (Keywords + хэштеги внутри)</label>

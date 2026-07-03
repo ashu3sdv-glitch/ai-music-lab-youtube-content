@@ -43,16 +43,30 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
         </div>
       )}
 
-      <h3>YouTube Long</h3>
+      <h3>YouTube Long — A/Б тест обложек</h3>
+      <div className="muted small" style={{ marginBottom: 10 }}>
+        Два содержательно разных варианта — их можно загрузить в «Test and compare» в YouTube Studio.
+      </div>
       <div className="grid-3">
         <ThumbCard
-          label="Обложка Long"
+          label="Обложка Long — вариант A"
           topic={longState?.topic}
           context={longContext}
           aspect="16:9"
           settings={settings}
-          card={cards.long}
-          onChange={(v) => patchCard("long", v)}
+          card={cards.longA}
+          onChange={(v) => patchCard("longA", v)}
+          variant="A"
+        />
+        <ThumbCard
+          label="Обложка Long — вариант Б"
+          topic={longState?.topic}
+          context={longContext}
+          aspect="16:9"
+          settings={settings}
+          card={cards.longB}
+          onChange={(v) => patchCard("longB", v)}
+          variant="B"
         />
       </div>
 

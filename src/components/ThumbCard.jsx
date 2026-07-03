@@ -6,7 +6,7 @@ import { cropToAspect } from "../lib/crop.js";
 // Универсальная карточка обложки: Long (16:9), Shorts (9:16), Записи (1:1).
 // Пайплайн: промпт (thumbnail-canva через Claude) → gpt-image-2 → обрезка →
 // цикл само-оценки vision-моделью → ручные правки через images.edit.
-export default function ThumbCard({ label, topic, context, aspect, settings, card, onChange }) {
+export default function ThumbCard({ label, topic, context, aspect, settings, card, onChange, variant }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [fixText, setFixText] = useState("");
@@ -26,7 +26,7 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
     setError("");
     setBusy("Генерирую промпт…");
     try {
-      const { prompt } = await callApi("generate-thumbnail-prompt", { topic: effectiveTopic, aspect, context });
+      const { prompt } = await callApi("generate-thumbnail-prompt", { topic: effectiveTopic, aspect, context, variant });
       let currentPrompt = prompt;
       const attempts = [];
       let final = null;

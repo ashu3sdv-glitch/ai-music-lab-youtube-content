@@ -26,13 +26,19 @@ const FORMAT_NOTES = {
   "1:1": "Community post image, квадрат 1:1 — генерируется точно в размер, обрезка не требуется, можно использовать весь кадр.",
 };
 
+const VARIANT_NOTE = {
+  A: "Это ВАРИАНТ A для A/Б-теста обложек на YouTube. Выбери Тип A (Talking Head) из скилла, если контекст это позволяет — иначе любой тип, но зафиксируй чёткую композицию, к которой будет контрастировать вариант Б.",
+  B: "Это ВАРИАНТ Б для A/Б-теста обложек на YouTube. Варианты в A/Б-тесте должны быть содержательно, а не косметически разными — выбери ДРУГОЙ тип композиции из скилла (Тип B или Тип C) и ДРУГУЮ цветовую схему, чем типично ожидался бы вариант A с той же темой. Не повторяй ту же сцену другими словами — предложи другой визуальный подход к той же теме.",
+};
+
 export default jsonHandler(async (body) => {
-  const { topic, aspect = "16:9", context } = body;
+  const { topic, aspect = "16:9", context, variant } = body;
   if (!topic) throw new Error("Не указана тема для обложки");
   const trimmedContext = context ? context.slice(0, 4000) : "";
+  const variantNote = VARIANT_NOTE[variant] ? `\n\n${VARIANT_NOTE[variant]}` : "";
   const text = await askClaude({
     system: SYSTEM,
-    user: `Тема: ${topic}\n\nФормат: ${FORMAT_NOTES[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — используй конкретные детали из него):\n${trimmedContext}` : ""}\n\nСгенерируй промпт обложки.`,
+    user: `Тема: ${topic}\n\nФормат: ${FORMAT_NOTES[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — используй конкретные детали из него):\n${trimmedContext}` : ""}${variantNote}\n\nСгенерируй промпт обложки.`,
     maxTokens: 2000,
   });
   return extractJson(text);
