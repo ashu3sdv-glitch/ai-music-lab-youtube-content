@@ -1,0 +1,198 @@
+import { useState } from "react";
+import { callApi } from "../lib/api.js";
+import LinksPicker from "./LinksPicker.jsx";
+
+const empty = {
+  topic: "",
+  hooks: [],
+  selectedHookIndex: null,
+  script: "",
+  description: null,
+  editingPlan: "",
+  selectedLinkIds: [],
+};
+
+// YouTube Long: тема → хуки → сценарий (+правка) → описание/tags (+правка) → план монтажа.
+export default function LongTab({ state, setState, links }) {
+  const data = { ...empty, ...state };
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [scriptFix, setScriptFix] = useState("");
+  const [descFix, setDescFix] = useState("");
+
+  function patch(p) {
+    setState({ ...data, ...p });
+  }
+
+  async function run(label, fn) {
+    setError("");
+    setBusy(label);
+    try {
+      await fn();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const genHooks = () =>
+    run("Генерирую хуки…", async () => {
+      if (!data.topic.trim()) throw new Error("Введите тему ролика");
+      const { hooks } = await callApi("generate-hooks", { topic: data.topic });
+      patch({ hooks, selectedHookIndex: null, script: "", description: null, editingPlan: "" });
+    });
+
+  const genScript = () =>
+    run("Генерирую сценарий…", async () => {
+      const hook = data.hooks[data.selectedHookIndex];
+      const { script } = await callApi("generate-script", { topic: data.topic, hook: hook.text });
+      patch({ script, description: null, editingPlan: "" });
+    });
+
+  const reworkScript = () =>
+    run("Переделываю сценарий…", async () => {
+      if (!scriptFix.trim()) return;
+      const { script } = await callApi("generate-script", {
+        topic: data.topic,
+        currentScript: data.script,
+        instruction: scriptFix.trim(),
+      });
+      patch({ script });
+      setScriptFix("");
+    });
+
+  const genDescription = () =>
+    run("Генерирую описание…", async () => {
+      if (!data.script.trim()) throw new Error("Сначала нужен финальный сценарий");
+      const selectedLinks = links.filter((l) => data.selectedLinkIds.includes(l.id));
+      const desc = await callApi("generate-description", { topic: data.topic, script: data.script, links: selectedLinks });
+      patch({ description: desc });
+    });
+
+  const reworkDescription = () =>
+    run("Переделываю описание…", async () => {
+      if (!descFix.trim()) return;
+      const selectedLinks = links.filter((l) => data.selectedLinkIds.includes(l.id));
+      const desc = await callApi("generate-description", {
+        topic: data.topic,
+        current: data.description,
+        instruction: descFix.trim(),
+        links: selectedLinks,
+      });
+      patch({ description: desc });
+      setDescFix("");
+    });
+
+  const genEditingPlan = () =>
+    run("Составляю план монтажа…", async () => {
+      if (!data.script.trim()) throw new Error("Сначала нужен финальный сценарий");
+      const { plan } = await callApi("generate-editing-plan", { script: data.script });
+      patch({ editingPlan: plan });
+    });
+
+  return (
+    <div>
+      <div className="card">
+        <div className="card-head"><strong>1. Тема и хук</strong></div>
+        <div className="field">
+          <label>Тема ролика</label>
+          <input value={data.topic} onChange={(e) => patch({ topic: e.target.value })} placeholder="О чём видео" />
+        </div>
+        <button onClick={genHooks} disabled={!!busy}>Сгенерировать хуки</button>
+
+        {data.hooks.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            {data.hooks.map((h, i) => (
+              <div
+                key={i}
+                className={`hook-option ${data.selectedHookIndex === i ? "selected" : ""}`}
+                onClick={() => patch({ selectedHookIndex: i })}
+              >
+                <input type="radio" checked={data.selectedHookIndex === i} readOnly style={{ marginTop: 3 }} />
+                <div>
+                  <strong>{h.title}</strong> <span className="muted small">({h.type})</span>
+                  <div className="small" style={{ marginTop: 4 }}>{h.text}</div>
+                </div>
+              </div>
+            ))}
+            <button onClick={genScript} disabled={data.selectedHookIndex === null || !!busy}>
+              Сгенерировать сценарий
+            </button>
+          </div>
+        )}
+      </div>
+
+      {data.script && (
+        <div className="card">
+          <div className="card-head"><strong>2. Сценарий</strong></div>
+          <textarea value={data.script} onChange={(e) => patch({ script: e.target.value })} />
+          <div className="fix-row">
+            <input
+              placeholder="Что исправить (например: сделай короче, добавь юмора во вступление)"
+              value={scriptFix}
+              onChange={(e) => setScriptFix(e.target.value)}
+              disabled={!!busy}
+            />
+            <button onClick={reworkScript} disabled={!!busy || !scriptFix.trim()}>Переделать с учётом правки</button>
+          </div>
+          <div className="row">
+            <button onClick={genDescription} disabled={!!busy}>Сгенерировать описание</button>
+            <button className="secondary" onClick={genEditingPlan} disabled={!!busy}>Сгенерировать план монтажа</button>
+          </div>
+        </div>
+      )}
+
+      {data.script && (
+        <div className="card">
+          <div className="card-head"><strong>Ссылки в описание</strong></div>
+          <LinksPicker links={links} selected={data.selectedLinkIds} onChange={(ids) => patch({ selectedLinkIds: ids })} />
+        </div>
+      )}
+
+      {data.description && (
+        <div className="card">
+          <div className="card-head"><strong>3. Описание</strong></div>
+          <div className="field">
+            <label>Заголовок</label>
+            <input value={data.description.title} onChange={(e) => patch({ description: { ...data.description, title: e.target.value } })} />
+          </div>
+          <div className="field">
+            <label>Описание (Keywords + хэштеги внутри)</label>
+            <textarea
+              value={data.description.description}
+              onChange={(e) => patch({ description: { ...data.description, description: e.target.value } })}
+            />
+          </div>
+          <div className="field">
+            <label>Tags (метаданные YouTube, через запятую)</label>
+            <textarea
+              style={{ minHeight: 60 }}
+              value={data.description.tags}
+              onChange={(e) => patch({ description: { ...data.description, tags: e.target.value } })}
+            />
+          </div>
+          <div className="fix-row">
+            <input
+              placeholder="Что исправить (например: сократи, убери пункт про Track Start)"
+              value={descFix}
+              onChange={(e) => setDescFix(e.target.value)}
+              disabled={!!busy}
+            />
+            <button onClick={reworkDescription} disabled={!!busy || !descFix.trim()}>Переделать</button>
+          </div>
+        </div>
+      )}
+
+      {data.editingPlan && (
+        <div className="card">
+          <div className="card-head"><strong>4. План монтажа</strong></div>
+          <textarea value={data.editingPlan} onChange={(e) => patch({ editingPlan: e.target.value })} />
+        </div>
+      )}
+
+      {busy && <div className="busy">{busy}</div>}
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+}
