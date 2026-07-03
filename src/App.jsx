@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePersistentState } from "./lib/storage.js";
 import LongTab from "./components/LongTab.jsx";
 import ShortsTab from "./components/ShortsTab.jsx";
@@ -25,6 +25,7 @@ const defaultSettings = {
 
 export default function App() {
   const [tab, setTab] = useState("long");
+  const [theme, setTheme] = usePersistentState("theme", "light");
   const [links, setLinks] = usePersistentState("links", []);
   const [settings, setSettings] = usePersistentState("settings", defaultSettings);
   const [longState, setLongState] = usePersistentState("long", {});
@@ -33,9 +34,18 @@ export default function App() {
   const [timecodesState, setTimecodesState] = usePersistentState("timecodes", {});
   const [communityState, setCommunityState] = usePersistentState("community", {});
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
   return (
     <div>
-      <h1>AI Music Lab — YouTube Content</h1>
+      <div className="top-row">
+        <h1>AI Music Lab — YouTube Content</h1>
+        <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+          {theme === "light" ? "🌙 Тёмная тема" : "☀️ Светлая тема"}
+        </button>
+      </div>
       <div className="tabs">
         {TABS.map((t) => (
           <button

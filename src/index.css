@@ -1,9 +1,38 @@
 * { box-sizing: border-box; }
+
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --border: #2a2d35;
+  --text: #e8e8ea;
+  --text-muted: #8b8e98;
+  --input-bg: #0f1115;
+  --accent: #4d7cfe;
+  --accent-text: #ffffff;
+  --error: #ff6b6b;
+  --link: #7ea1ff;
+  --code-bg: #22252c;
+}
+
+[data-theme="light"] {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #dde1e8;
+  --text: #1c1e22;
+  --text-muted: #6b6f7a;
+  --input-bg: #f5f6f8;
+  --accent: #3f6bef;
+  --accent-text: #ffffff;
+  --error: #d1373f;
+  --link: #2f5bd6;
+  --code-bg: #eef0f4;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #0f1115;
-  color: #e8e8ea;
+  background: var(--bg);
+  color: var(--text);
 }
 
 #root {
@@ -17,19 +46,41 @@ h1 {
   margin: 0 0 20px;
 }
 
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.top-row h1 {
+  margin: 0;
+}
+
+.theme-toggle {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #2a2d35;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
 }
 
 .tab-btn {
   background: transparent;
-  border: 1px solid #2a2d35;
-  color: #c7c9d1;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
@@ -37,14 +88,14 @@ h1 {
 }
 
 .tab-btn.active {
-  background: #4d7cfe;
-  border-color: #4d7cfe;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
 }
 
 .card {
-  background: #171a21;
-  border: 1px solid #2a2d35;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
@@ -60,20 +111,21 @@ h1 {
 label {
   display: block;
   font-size: 13px;
-  color: #a6a9b3;
+  color: var(--text-muted);
   margin-bottom: 6px;
 }
 
 input[type="text"],
 input[type="password"],
 input[type="url"],
+input[type="date"],
 input:not([type]),
 textarea,
 select {
   width: 100%;
-  background: #0f1115;
-  border: 1px solid #2a2d35;
-  color: #e8e8ea;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
   border-radius: 8px;
   padding: 10px;
   font-size: 14px;
@@ -87,9 +139,9 @@ textarea {
 }
 
 button {
-  background: #4d7cfe;
+  background: var(--accent);
   border: none;
-  color: #fff;
+  color: var(--accent-text);
   padding: 10px 16px;
   border-radius: 8px;
   cursor: pointer;
@@ -102,12 +154,13 @@ button:disabled {
 }
 
 button.secondary {
-  background: #2a2d35;
+  background: var(--code-bg);
+  color: var(--text);
 }
 
 button.link {
   background: transparent;
-  color: #7ea1ff;
+  color: var(--link);
   padding: 0;
   font-size: 13px;
   text-decoration: underline;
@@ -136,7 +189,7 @@ button.link {
 }
 
 .muted {
-  color: #8b8e98;
+  color: var(--text-muted);
 }
 
 .small {
@@ -144,13 +197,13 @@ button.link {
 }
 
 .error {
-  color: #ff6b6b;
+  color: var(--error);
   font-size: 13px;
   margin-top: 8px;
 }
 
 .busy {
-  color: #7ea1ff;
+  color: var(--link);
   font-size: 13px;
   margin-top: 8px;
 }
@@ -161,14 +214,14 @@ button.link {
   align-items: flex-start;
   gap: 8px;
   padding: 8px;
-  border: 1px solid #2a2d35;
+  border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
 }
 
 .hook-option.selected {
-  border-color: #4d7cfe;
+  border-color: var(--accent);
   background: rgba(77, 124, 254, 0.08);
 }
 
@@ -225,7 +278,7 @@ button.link {
   display: flex;
   justify-content: space-between;
   padding: 4px 0;
-  border-bottom: 1px solid #22252c;
+  border-bottom: 1px solid var(--code-bg);
 }
 
 video, audio {
