@@ -34,6 +34,7 @@ export default function CommunityTab({ state, setState, longState, shortsState }
       const { posts } = await callApi("generate-community", {
         topic: longState?.topic,
         script: longState?.script,
+        synopsis: longState?.description?.synopsis,
         shortsTopics,
       });
       patch({ posts });

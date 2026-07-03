@@ -24,8 +24,10 @@ ${SKILLS.content_youtube}
 - Хэштеги последней строкой.
 - Место для таймкодов НЕ добавляй — они подставляются отдельно после монтажа.
 
+ТАКЖЕ верни поле "synopsis" — краткий пересказ сути ролика в 2-3 предложениях простым языком (не для публикации, для внутреннего использования: по нему потом генерируются промпты обложек и посты для «Записей», поэтому он должен передавать конкретную суть и детали, а не общие слова).
+
 ФОРМАТ ОТВЕТА: верни строго JSON без пояснений:
-{"title": "заголовок видео", "description": "полный текст описания с блоком ссылок (если есть), Keywords и хэштегами", "tags": "теги видео через запятую, суммарно до 500 символов (это поле метаданных YouTube, не блок Keywords)"}`;
+{"title": "заголовок видео", "description": "полный текст описания с блоком ссылок (если есть), Keywords и хэштегами", "tags": "теги видео через запятую, суммарно до 500 символов (это поле метаданных YouTube, не блок Keywords)", "synopsis": "краткий пересказ сути ролика, 2-3 предложения"}`;
 
 export default jsonHandler(async (body) => {
   const { topic, script, links, current, instruction } = body;
@@ -41,7 +43,7 @@ export default jsonHandler(async (body) => {
   if (current && instruction) {
     const text = await askClaude({
       system: SYSTEM,
-      user: `Текущие метаданные видео (тема: ${topic || "—"}):\n\nЗаголовок: ${current.title}\n\nОписание:\n${current.description}\n\nTags: ${current.tags}\n\nПерепиши их с учётом правки: «${instruction}». Меняй только то, чего касается правка.${linksBlock}`,
+      user: `Текущие метаданные видео (тема: ${topic || "—"}):\n\nЗаголовок: ${current.title}\n\nОписание:\n${current.description}\n\nTags: ${current.tags}\n\nSynopsis: ${current.synopsis || "—"}\n\nПерепиши их с учётом правки: «${instruction}». Меняй только то, чего касается правка (synopsis меняй только если правка касается сути ролика — иначе верни его как есть).${linksBlock}`,
       maxTokens: 4000,
     });
     return extractJson(text);
@@ -50,7 +52,7 @@ export default jsonHandler(async (body) => {
   if (!script) throw new Error("Нет финального текста сценария");
   const text = await askClaude({
     system: SYSTEM,
-    user: `Тема видео: ${topic || "—"}\n\nФинальный сценарий видео:\n\n${script}${linksBlock}\n\nСгенерируй заголовок, описание и tags.`,
+    user: `Тема видео: ${topic || "—"}\n\nФинальный сценарий видео:\n\n${script}${linksBlock}\n\nСгенерируй заголовок, описание, tags и synopsis.`,
     maxTokens: 4000,
   });
   return extractJson(text);

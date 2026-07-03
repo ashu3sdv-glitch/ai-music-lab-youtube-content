@@ -172,6 +172,14 @@ export default function LongTab({ state, setState, links }) {
               onChange={(e) => patch({ description: { ...data.description, tags: e.target.value } })}
             />
           </div>
+          <div className="field">
+            <label>Краткий пересказ (для обложек и постов «Записи», не публикуется)</label>
+            <textarea
+              style={{ minHeight: 80 }}
+              value={data.description.synopsis || ""}
+              onChange={(e) => patch({ description: { ...data.description, synopsis: e.target.value } })}
+            />
+          </div>
           <div className="fix-row">
             <input
               placeholder="Что исправить (например: сократи, убери пункт про Track Start)"

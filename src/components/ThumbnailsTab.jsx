@@ -12,10 +12,11 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
   const shortsTopics = (shortsState?.cards || []).map((c) => c.topic).filter(Boolean);
   const communityTopics = (communityState?.posts || []).map((p) => p.shortsTopic).filter(Boolean);
 
-  // Контекст для промпта обложки — не только тема, а конкретное содержание:
-  // для Long это заголовок + сценарий, для Shorts — заголовки + описание,
-  // для Community — текст поста (а до его генерации — кусок сценария).
-  const longContext = [longState?.description?.title, longState?.script]
+  // Контекст для промпта обложки — не только тема, а конкретное содержание.
+  // Пересказ (synopsis) из описания — самый плотный источник, приоритет за ним;
+  // сырой сценарий — запасной вариант, пока пересказа ещё нет.
+  const synopsis = longState?.description?.synopsis;
+  const longContext = [longState?.description?.title, synopsis || longState?.script]
     .filter(Boolean)
     .join("\n\n")
     .slice(0, 3000);
@@ -27,7 +28,11 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
   }
 
   function communityContext(i) {
-    return communityState?.posts?.[i]?.text || (longState?.script ? longState.script.slice(0, 1500) : "");
+    return (
+      communityState?.posts?.[i]?.text ||
+      synopsis ||
+      (longState?.script ? longState.script.slice(0, 1500) : "")
+    );
   }
 
   return (
