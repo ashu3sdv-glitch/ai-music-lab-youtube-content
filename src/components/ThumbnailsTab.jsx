@@ -12,6 +12,24 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
   const shortsTopics = (shortsState?.cards || []).map((c) => c.topic).filter(Boolean);
   const communityTopics = (communityState?.posts || []).map((p) => p.shortsTopic).filter(Boolean);
 
+  // Контекст для промпта обложки — не только тема, а конкретное содержание:
+  // для Long это заголовок + сценарий, для Shorts — заголовки + описание,
+  // для Community — текст поста (а до его генерации — кусок сценария).
+  const longContext = [longState?.description?.title, longState?.script]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 3000);
+
+  function shortsContext(i) {
+    const c = shortsState?.cards?.[i];
+    if (!c) return "";
+    return [...(c.titles || []), c.description].filter(Boolean).join("\n\n");
+  }
+
+  function communityContext(i) {
+    return communityState?.posts?.[i]?.text || (longState?.script ? longState.script.slice(0, 1500) : "");
+  }
+
   return (
     <div>
       {!settings.openaiKey && (
@@ -25,7 +43,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
         <ThumbCard
           label="Обложка Long"
           topic={longState?.topic}
-          context={longState?.description?.title}
+          context={longContext}
           aspect="16:9"
           settings={settings}
           card={cards.long}
@@ -40,7 +58,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
             key={i}
             label={`Обложка Shorts #${i + 1}`}
             topic={shortsTopics[i]}
-            context={(shortsState?.cards?.[i]?.titles || [])[0]}
+            context={shortsContext(i)}
             aspect="9:16"
             settings={settings}
             card={cards[`shorts${i}`]}
@@ -56,7 +74,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
             key={i}
             label={`Картинка для поста #${i + 1}`}
             topic={communityTopics[i] || shortsTopics[i]}
-            context={communityState?.posts?.[i]?.text}
+            context={communityContext(i)}
             aspect="1:1"
             settings={settings}
             card={cards[`community${i}`]}

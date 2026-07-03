@@ -14,6 +14,7 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
 
   const { openaiKey, visionModel, scoreThreshold, maxAttempts } = settings;
   const state = card || {};
+  const effectiveTopic = state.topic !== undefined ? state.topic : (topic || "");
 
   function update(patch) {
     onChange({ ...state, ...patch });
@@ -21,11 +22,11 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
 
   async function runAutoLoop() {
     if (!openaiKey) return setError("Введите OpenAI API-ключ во вкладке «Обложки» или «Настройки»");
-    if (!topic) return setError("Сначала задайте тему для этой карточки");
+    if (!effectiveTopic.trim()) return setError("Сначала задайте тему для этой карточки");
     setError("");
     setBusy("Генерирую промпт…");
     try {
-      const { prompt } = await callApi("generate-thumbnail-prompt", { topic, aspect, context });
+      const { prompt } = await callApi("generate-thumbnail-prompt", { topic: effectiveTopic, aspect, context });
       let currentPrompt = prompt;
       const attempts = [];
       let final = null;
@@ -105,7 +106,14 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
         <strong>{label}</strong>
         <span className="muted">{aspect}</span>
       </div>
-      {topic ? <div className="muted small">Тема: {topic}</div> : <div className="muted small">Тема ещё не задана</div>}
+      <div className="field">
+        <label>Тема для обложки (можно поправить отдельно от темы видео)</label>
+        <input
+          value={effectiveTopic}
+          onChange={(e) => update({ topic: e.target.value })}
+          placeholder="Тема ещё не задана"
+        />
+      </div>
 
       {state.image && (
         <>
