@@ -30,6 +30,7 @@ export async function generateImage(apiKey, prompt, aspect) {
       model: "gpt-image-2",
       prompt,
       size: SIZE_BY_ASPECT[aspect] || "1024x1024",
+      quality: "high",
       n: 1,
     }),
   });
@@ -44,6 +45,7 @@ export async function editImage(apiKey, imageDataUrl, prompt, aspect) {
   form.append("image", blob, "image.png");
   form.append("prompt", prompt);
   form.append("size", SIZE_BY_ASPECT[aspect] || "1024x1024");
+  form.append("quality", "high");
   const data = await openaiFetch(apiKey, "/images/edits", {
     method: "POST",
     body: form,
