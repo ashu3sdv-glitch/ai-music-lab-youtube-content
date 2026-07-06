@@ -1,4 +1,4 @@
-import { askClaude, extractJson, jsonHandler } from "./_lib/claude.js";
+import { askClaude, extractJson, jsonHandler, bioBlock } from "./_lib/claude.js";
 import { SKILLS } from "./_lib/skills.js";
 
 const SYSTEM = `Ты готовишь YouTube Shorts канала AI Music Lab. Твои рабочие инструкции — скиллы content-shorts (описание, правила канала) и youtube-titles (заголовки) ниже. Следуй им точно.
@@ -20,7 +20,7 @@ ${SKILLS.youtube_titles}
 Порядок элементов в "shorts" — тот же, что порядок тем в запросе.`;
 
 export default jsonHandler(async (body) => {
-  const { topics, links, current, instruction } = body;
+  const { topics, links, current, instruction, channelBio } = body;
 
   const linksBlock =
     Array.isArray(links) && links.length
@@ -33,7 +33,7 @@ export default jsonHandler(async (body) => {
   if (current && instruction) {
     const text = await askClaude({
       system: SYSTEM,
-      user: `Текущая карточка Shorts:\nТема: ${current.topic}\nЗаголовки: ${JSON.stringify(current.titles)}\nОписание:\n${current.description}\n\nПерепиши её с учётом правки: «${instruction}». Меняй только то, чего касается правка. Верни JSON с одним элементом в "shorts".${linksBlock}`,
+      user: `${bioBlock(channelBio)}Текущая карточка Shorts:\nТема: ${current.topic}\nЗаголовки: ${JSON.stringify(current.titles)}\nОписание:\n${current.description}\n\nПерепиши её с учётом правки: «${instruction}». Меняй только то, чего касается правка. Верни JSON с одним элементом в "shorts".${linksBlock}`,
       maxTokens: 2500,
     });
     return extractJson(text);
@@ -44,7 +44,7 @@ export default jsonHandler(async (body) => {
   }
   const text = await askClaude({
     system: SYSTEM,
-    user: `Темы Shorts:\n${topics.map((t, i) => `${i + 1}. ${t}`).join("\n")}${linksBlock}\n\nНа каждую тему: описание + 2 варианта заголовка.`,
+    user: `${bioBlock(channelBio)}Темы Shorts:\n${topics.map((t, i) => `${i + 1}. ${t}`).join("\n")}${linksBlock}\n\nНа каждую тему: описание + 2 варианта заголовка.`,
     maxTokens: 4000,
   });
   return extractJson(text);

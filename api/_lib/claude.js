@@ -21,6 +21,15 @@ export async function askClaude({ system, user, maxTokens = 8000 }) {
     .join("");
 }
 
+// Короткое "о себе/о канале" от автора — если задано, добавляется первым
+// блоком в user-сообщение каждого эндпоинта, чтобы контент был точнее
+// про этот конкретный канал, а не обезличенный.
+export function bioBlock(channelBio) {
+  return channelBio && channelBio.trim()
+    ? `О канале (контекст от автора, учитывай при генерации): ${channelBio.trim()}\n\n`
+    : "";
+}
+
 // Вырезает JSON из ответа модели (модель может обернуть его в ```json ... ```).
 export function extractJson(text) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);

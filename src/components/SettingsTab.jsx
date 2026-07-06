@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { usePersistentState } from "../lib/storage.js";
 
-// Раздел «Настройки»: библиотека ссылок (гайды, Boosty и т.д.), OpenAI-ключ
-// и параметры цикла само-оценки обложек. Всё хранится в localStorage (App.jsx).
+// Раздел «Настройки»: библиотека ссылок (гайды, Boosty и т.д.), "о канале",
+// OpenAI-ключ и параметры цикла само-оценки обложек. Всё хранится в localStorage.
 export default function SettingsTab({ links, setLinks, settings, setSettings }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const [channelBio, setChannelBio] = usePersistentState("channelBio", "");
 
   function addLink() {
     if (!name.trim() || !url.trim()) return;
@@ -19,6 +21,21 @@ export default function SettingsTab({ links, setLinks, settings, setSettings }) 
 
   return (
     <div>
+      <div className="card">
+        <div className="card-head"><strong>О канале</strong></div>
+        <div className="muted small" style={{ marginBottom: 10 }}>
+          Кратко: чем вы занимаетесь и о чём канал. Это автоматически добавляется в контекст
+          каждой генерации (хуки, сценарий, описание, обложки, посты) — писать это в каждом
+          модуле отдельно не нужно.
+        </div>
+        <textarea
+          style={{ minHeight: 100 }}
+          placeholder="Например: веду канал о создании музыки в Suno — учу писать промпты, структурировать треки, разбираю ошибки новичков. Личный, разговорный тон."
+          value={channelBio}
+          onChange={(e) => setChannelBio(e.target.value)}
+        />
+      </div>
+
       <div className="card">
         <div className="card-head"><strong>Библиотека ссылок</strong></div>
         <div className="muted small" style={{ marginBottom: 10 }}>

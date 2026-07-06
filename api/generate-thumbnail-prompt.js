@@ -1,4 +1,4 @@
-import { askClaude, extractJson, jsonHandler } from "./_lib/claude.js";
+import { askClaude, extractJson, jsonHandler, bioBlock } from "./_lib/claude.js";
 import { SKILLS } from "./_lib/skills.js";
 
 const SYSTEM = `Ты создаёшь промпт для генерации обложки (image prompt) канала AI Music Lab. Твоя рабочая инструкция — скилл thumbnail-generation ниже. Следуй ей точно.
@@ -43,14 +43,14 @@ const VARIANT_NOTE = {
 };
 
 export default jsonHandler(async (body) => {
-  const { topic, aspect = "16:9", context, variant } = body;
+  const { topic, aspect = "16:9", context, variant, channelBio } = body;
   if (!topic) throw new Error("Не указана тема для обложки");
   const trimmedContext = context ? context.slice(0, 6000) : "";
   const variantNote = VARIANT_NOTE[variant] ? `\n\n${VARIANT_NOTE[variant]}` : "";
   const shortsNote = aspect === "9:16" ? `\n\n${SHORTS_STYLE_NOTE}` : "";
   const text = await askClaude({
     system: SYSTEM,
-    user: `Тема: ${topic}\n\nФормат: ${FORMAT_NOTES[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — используй конкретные детали из него):\n${trimmedContext}` : ""}${shortsNote}${variantNote}\n\nСгенерируй промпт обложки.`,
+    user: `${bioBlock(channelBio)}Тема: ${topic}\n\nФормат: ${FORMAT_NOTES[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — используй конкретные детали из него):\n${trimmedContext}` : ""}${shortsNote}${variantNote}\n\nСгенерируй промпт обложки.`,
     maxTokens: 2000,
   });
   return extractJson(text);

@@ -1,4 +1,4 @@
-import { askClaude, extractJson, jsonHandler } from "./_lib/claude.js";
+import { askClaude, extractJson, jsonHandler, bioBlock } from "./_lib/claude.js";
 import { SKILLS } from "./_lib/skills.js";
 
 const SYSTEM = `Ты готовишь посты для вкладки «Записи» (Community) канала AI Music Lab. Правила голоса и ограничения канала — в скилле content-youtube ниже. Следуй им точно.
@@ -20,13 +20,13 @@ ${SKILLS.content_youtube}
 {"posts": [{"angle": "краткое название ракурса поста (2-4 слова, для внутренней пометки)", "text": "текст поста, заканчивающийся строкой [ссылка на видео]"}]}`;
 
 export default jsonHandler(async (body) => {
-  const { topic, script, synopsis, current, instruction } = body;
+  const { topic, script, synopsis, current, instruction, channelBio } = body;
 
   // Режим точечной правки одного поста.
   if (current && instruction) {
     const text = await askClaude({
       system: SYSTEM,
-      user: `Текущий пост (ракурс «${current.angle}»):\n\n${current.text}\n\nПерепиши его с учётом правки: «${instruction}». Сохрани плейсхолдер [ссылка на видео] в конце. Верни JSON с одним элементом в "posts".`,
+      user: `${bioBlock(channelBio)}Текущий пост (ракурс «${current.angle}»):\n\n${current.text}\n\nПерепиши его с учётом правки: «${instruction}». Сохрани плейсхолдер [ссылка на видео] в конце. Верни JSON с одним элементом в "posts".`,
       maxTokens: 1500,
     });
     return extractJson(text);
@@ -35,7 +35,7 @@ export default jsonHandler(async (body) => {
   if (!topic && !script && !synopsis) throw new Error("Нет темы, пересказа или сценария главного ролика");
   const text = await askClaude({
     system: SYSTEM,
-    user: `Тема Long-видео: ${topic || "—"}\n\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий (для деталей):\n${script ? script.slice(0, 6000) : "—"}\n\nНапиши 3 поста для «Записей» — анонсы этого Long-видео, каждый под своим ракурсом.`,
+    user: `${bioBlock(channelBio)}Тема Long-видео: ${topic || "—"}\n\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий (для деталей):\n${script ? script.slice(0, 6000) : "—"}\n\nНапиши 3 поста для «Записей» — анонсы этого Long-видео, каждый под своим ракурсом.`,
     maxTokens: 2500,
   });
   return extractJson(text);
