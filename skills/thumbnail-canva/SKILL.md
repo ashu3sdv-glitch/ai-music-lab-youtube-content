@@ -8,7 +8,7 @@ description: Design thumbnails and generate AI image prompts for YouTube music c
 ## Контекст канала
 - Канал: AI Music Lab (русскоязычная аудитория)
 - Формат: talking-head видео + музыкальный трек
-- Инструменты: Canva (дизайн) + AI-генератор изображений (фон/визуал)
+- Инструменты: ОДИН запрос к OpenAI gpt-image-2 — герой, текст и фон рисуются в одной картинке за один раз. Никакой ручной сборки в Canva/дизайнере не происходит — если что-то не попало в промпт, этого не будет на финальной обложке.
 - Стиль: спокойный, наблюдательный, личный
 
 ---
@@ -171,78 +171,83 @@ description: Design thumbnails and generate AI image prompts for YouTube music c
 
 ---
 
-## ФАЗА 2: Промпт для AI-генерации фона
+## ФАЗА 2: Сцены-заготовки по настроению
 
-### Шаблон промпта (универсальный)
+Это НЕ отдельный «промпт для фона» — Canva-сборки нет, финальная картинка рождается за один запрос к gpt-image-2. Ниже — заготовки атмосферы/сцены, которые нужно СЛИТЬ в единый промпт вместе с героем (если он есть по формуле) и заголовочным текстом (см. ФАЗУ 3) — не выдавать их отдельно и не писать «no text, no people», если по формуле текст и герой должны быть в кадре.
 
-```
-YouTube thumbnail background image, [ОПИСАНИЕ СЦЕНЫ].
-Mood: [НАСТРОЕНИЕ].
-Color palette: [ЦВЕТА].
-Style: cinematic, high contrast, professional photography.
-No text, no people, no faces.
-16:9 ratio, 1280x720px.
-Leave [left/right] third empty for subject placement.
-```
+### Как использовать заготовку
+1. Возьми сцену/настроение/палитру из подходящей заготовки ниже.
+2. Впиши в неё героя (если формула требует) — конкретное действие, поза, эмоция.
+3. Впиши заголовочный текст прямо в описание сцены (стиль букв, размещение, цвет) — это часть одного изображения, а не отдельный слой.
+4. Собери всё в один связный промпт-абзац для gpt-image-2 (см. пример в ФАЗЕ 3).
 
-### Готовые промпты для AI Music Lab
+### Готовые заготовки сцен для AI Music Lab
 
 **Ночная атмосфера / медитация / сон:**
 ```
-YouTube thumbnail background. Rain on a dark window at night,
-city lights blurred outside, single candle or lamp reflection.
+Rain on a dark window at night, city lights blurred outside,
+single candle or lamp reflection.
 Mood: melancholic, intimate, cinematic.
 Color palette: deep blue, warm amber accent.
-No text, no people. 16:9, 1280x720px.
 ```
 
 **Этника / восточные инструменты:**
 ```
-YouTube thumbnail background. Ancient desert landscape at golden hour,
-subtle geometric ornamental patterns fading into background.
+Ancient desert landscape at golden hour, subtle geometric
+ornamental patterns fading into background.
 Mood: mystical, vast, timeless.
 Color palette: warm gold, terracotta, deep shadow.
-No text, no people. 16:9, 1280x720px.
 ```
 
 **EDM / электронная / ритм:**
 ```
-YouTube thumbnail background. Abstract sound waves or equalizer
-visualization, neon light trails, dark studio atmosphere.
+Abstract sound waves or equalizer visualization, neon light
+trails, dark studio atmosphere.
 Mood: energetic, modern, pulsating.
 Color palette: electric blue, magenta, deep black.
-No text, no people. 16:9, 1280x720px.
-Leave right third darker for text.
 ```
 
 **Классика / хор / вокал:**
 ```
-YouTube thumbnail background. Grand concert hall interior,
-dramatic lighting from above, empty stage with spotlight.
+Grand concert hall interior, dramatic lighting from above,
+empty stage with spotlight.
 Mood: majestic, emotional, epic.
 Color palette: deep red, gold, warm white.
-No text, no people. 16:9, 1280x720px.
 ```
 
 **Личная история / talking head фон:**
 ```
-YouTube thumbnail background. Blurred modern home interior,
-warm evening light, bookshelf or window visible.
+Blurred modern home interior or studio, warm evening light,
+bookshelf or window visible.
 Mood: intimate, personal, calm.
 Color palette: warm beige, soft brown, amber.
-No text, no people. 16:9, 1280x720px.
-Leave left third for subject placement.
 ```
 
 ---
 
-## ФАЗА 3: Сборка в Canva
+## ФАЗА 3: Собери единый промпт для gpt-image-2
 
-### Правила текста
+Здесь нет отдельного дизайнера — текст рисует та же модель, что рисует картинку, за один проход. Поэтому все параметры текста нужно перевести на язык генератора изображений, а не дизайн-программы:
+
+### Правила текста (описывай их СЛОВАМИ в промпте, не в pt/px)
 - Максимум 4-5 слов
-- Размер: 72-120pt для главного текста
-- Всегда добавляй обводку (4-6px чёрная для светлого текста)
-- Или: белый текст на полупрозрачной тёмной полосе
+- В промпте прямо пиши: "oversized bold lettering", "dominating the upper third of the frame", "white and yellow text with thick black outline for legibility" — это то, что реально управляет генератором, в отличие от "72pt" (число размером шрифт не поймёт)
+- Обводка/тень описывается как часть сцены: "thick black outline", "drop shadow for contrast against background" — не отдельный слой, а элемент одного изображения
+
+### Как собрать финальный промпт (один абзац для OpenAI Images API)
+Склей по порядку: [герой + действие/эмоция] + [символ темы] + [сцена/фон из заготовки Фазы 2] + [заголовочный текст, его цвет/размещение/стиль букв словами] + [свет и камера из банка ключевых слов] + [формат/безопасная зона по текущему аспекту].
+
+Пример (тема «Режиссура трека»):
+```
+A film director sitting in a director's chair, back to camera, thoughtful pose,
+looking at a glowing clapperboard reading "3 АКТА" held just off to the side.
+Dark cinematic studio background with a single spotlight, warm key light and
+cool blue rim light, soft haze for depth. Bold oversized white and gold title
+text "РЕЖИССУРА ТРЕКА" in the upper third of the frame, thick black outline
+for legibility, dramatic shadow. Photorealistic, cinematic color grading, high
+contrast, sharp focus, 35mm lens, shallow depth of field. No UI, no screenshots.
+```
+Обрати внимание: это ОДИН связный абзац, герой/символ/свет/текст описаны вместе, а не как отдельные слои для последующей сборки.
 
 ### Базовая палитра канала (по умолчанию для Type A/D — личные/обучающие темы)
 Чёрный + белый + жёлтый — основа; синий, оранжевый, фиолетовый — акценты. Не больше 5 цветов одновременно. Без кислотных оттенков. Минимум красного и зелёного (кроме случаев, когда таблица настроений ниже прямо требует иного для чисто атмосферных/инструментальных тем без сюжета — Type B).
@@ -270,22 +275,4 @@ Leave left third for subject placement.
 
 ## ФОРМАТ ВЫВОДА
 
-Когда Александр даёт трек или тему — выдать:
-
-```
-ТИП: [A / B / C / D]
-
-ТЕКСТ НА ОБЛОЖКЕ: «[2-4 слова]»
-
-ПРОМПТ ДЛЯ ФОНА:
-[готовый промпт на английском]
-
-СБОРКА В CANVA:
-- Расположение элементов: [описание]
-- Цветовая схема: [из таблицы]
-- Размер текста: [размер]
-- Обводка/полоса: [параметры]
-
-АЛЬТЕРНАТИВНЫЙ ВАРИАНТ:
-[второй концепт с другим типом]
-```
+Результат — ОДИН связный промпт на английском для OpenAI Images API (gpt-image-2), собранный по ФАЗЕ 3: герой + символ темы + сцена + заголовочный текст (описанный словами, не в pt/px) + свет/камера — всё вместе, в одном абзаце. Никакого отдельного «промпта для фона» и никакой «сборки в Canva» — этого шага не существует, картинка получается готовой сразу.
