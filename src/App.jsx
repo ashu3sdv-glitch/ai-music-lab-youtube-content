@@ -58,9 +58,17 @@ export default function App() {
         ))}
       </div>
 
-      {tab === "long" && <LongTab state={longState} setState={setLongState} links={links} />}
-      {tab === "shorts" && <ShortsTab state={shortsState} setState={setShortsState} links={links} />}
-      {tab === "thumbnails" && (
+      {/* Все вкладки остаются смонтированными и только скрываются через CSS —
+          иначе переключение вкладки размонтирует компонент и оборвёт
+          отслеживание уже запущенной генерации (хук/сценарий/обложка и т.д.),
+          даже если сам запрос на сервере продолжает выполняться. */}
+      <div style={{ display: tab === "long" ? "block" : "none" }}>
+        <LongTab state={longState} setState={setLongState} links={links} />
+      </div>
+      <div style={{ display: tab === "shorts" ? "block" : "none" }}>
+        <ShortsTab state={shortsState} setState={setShortsState} links={links} />
+      </div>
+      <div style={{ display: tab === "thumbnails" ? "block" : "none" }}>
         <ThumbnailsTab
           state={thumbState}
           setState={setThumbState}
@@ -69,12 +77,16 @@ export default function App() {
           shortsState={shortsState}
           communityState={communityState}
         />
-      )}
-      {tab === "timecodes" && <TimecodesTab state={timecodesState} setState={setTimecodesState} settings={settings} />}
-      {tab === "community" && (
+      </div>
+      <div style={{ display: tab === "timecodes" ? "block" : "none" }}>
+        <TimecodesTab state={timecodesState} setState={setTimecodesState} settings={settings} />
+      </div>
+      <div style={{ display: tab === "community" ? "block" : "none" }}>
         <CommunityTab state={communityState} setState={setCommunityState} longState={longState} />
-      )}
-      {tab === "settings" && <SettingsTab links={links} setLinks={setLinks} settings={settings} setSettings={setSettings} />}
+      </div>
+      <div style={{ display: tab === "settings" ? "block" : "none" }}>
+        <SettingsTab links={links} setLinks={setLinks} settings={settings} setSettings={setSettings} />
+      </div>
     </div>
   );
 }
