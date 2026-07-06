@@ -10,7 +10,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
   }
 
   const shortsTopics = (shortsState?.cards || []).map((c) => c.topic).filter(Boolean);
-  const communityTopics = (communityState?.posts || []).map((p) => p.shortsTopic).filter(Boolean);
+  const communityTopics = (communityState?.posts || []).map((p) => p.angle).filter(Boolean);
 
   // Контекст для промпта обложки — не только тема, а конкретное содержание.
   // Пересказ (synopsis) задаёт фокус/угол, но сам по себе слишком тонкий
@@ -93,7 +93,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
           <ThumbCard
             key={i}
             label={`Картинка для поста #${i + 1}`}
-            topic={communityTopics[i] || shortsTopics[i]}
+            topic={communityTopics[i] || longState?.topic}
             context={communityContext(i)}
             aspect="1:1"
             settings={settings}

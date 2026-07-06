@@ -72,7 +72,7 @@ export default function App() {
       )}
       {tab === "timecodes" && <TimecodesTab state={timecodesState} setState={setTimecodesState} settings={settings} />}
       {tab === "community" && (
-        <CommunityTab state={communityState} setState={setCommunityState} longState={longState} shortsState={shortsState} />
+        <CommunityTab state={communityState} setState={setCommunityState} longState={longState} />
       )}
       {tab === "settings" && <SettingsTab links={links} setLinks={setLinks} settings={settings} setSettings={setSettings} />}
     </div>

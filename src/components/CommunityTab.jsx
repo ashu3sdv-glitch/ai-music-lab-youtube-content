@@ -3,8 +3,9 @@ import { callApi } from "../lib/api.js";
 
 const emptyState = { posts: [], intervalDays: 2, baseDate: "" };
 
-// Посты для «Записей»: 3 тизера, привязанных к темам Shorts, + график публикации.
-export default function CommunityTab({ state, setState, longState, shortsState }) {
+// Посты для «Записей»: 3 анонса главного Long-видео под разными ракурсами
+// (не Shorts) + график публикации.
+export default function CommunityTab({ state, setState, longState }) {
   const data = { ...emptyState, ...state };
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -26,8 +27,6 @@ export default function CommunityTab({ state, setState, longState, shortsState }
     }
   }
 
-  const shortsTopics = (shortsState?.cards || []).map((c) => c.topic).filter(Boolean);
-
   const generate = () =>
     run("Генерирую посты…", async () => {
       if (!longState?.topic && !longState?.script) throw new Error("Сначала заполните тему/сценарий в YouTube Long");
@@ -35,7 +34,6 @@ export default function CommunityTab({ state, setState, longState, shortsState }
         topic: longState?.topic,
         script: longState?.script,
         synopsis: longState?.description?.synopsis,
-        shortsTopics,
       });
       patch({ posts });
     });
@@ -92,7 +90,7 @@ export default function CommunityTab({ state, setState, longState, shortsState }
               <strong>Пост #{i + 1}</strong>
               {data.baseDate && <span className="muted small">{scheduleFor(i)}</span>}
             </div>
-            <div className="muted small">Shorts: {post.shortsTopic}</div>
+            <div className="muted small">Ракурс: {post.angle}</div>
             <textarea style={{ minHeight: 120 }} value={post.text} onChange={(e) => {
               const next = data.posts.slice();
               next[i] = { ...post, text: e.target.value };
