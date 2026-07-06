@@ -5,44 +5,44 @@
 // (images/edits, audio/transcriptions), не сохраняя и не логируя ключ —
 // он транзитом идёт в заголовке из браузера и используется только в рамках
 // этого одного запроса.
-export const config = {
-  api: { bodyParser: false },
-  maxDuration: 60,
-};
+//
+// Сигнатура Web API (Request/Response), а не классическая (req, res):
+// это официально задокументированный у Vercel способ получить СЫРОЕ тело
+// запроса (await request.arrayBuffer()) без риска, что платформа уже
+// распарсила/потребила поток за нас — что произошло бы с классическим
+// req.body в обычной (не Next.js) serverless-функции.
+export const maxDuration = 60;
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Только POST" });
-    return;
-  }
-
-  const path = req.headers["x-openai-path"];
-  const apiKey = req.headers["x-openai-key"];
+export async function POST(request) {
+  const path = request.headers.get("x-openai-path");
+  const apiKey = request.headers.get("x-openai-key");
   if (!path || !apiKey) {
-    res.status(400).json({ error: "Не хватает заголовков X-OpenAI-Path / X-OpenAI-Key" });
-    return;
+    return new Response(JSON.stringify({ error: "Не хватает заголовков X-OpenAI-Path / X-OpenAI-Key" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const bodyBuffer = Buffer.concat(chunks);
-
+    const bodyBuffer = await request.arrayBuffer();
     const upstream = await fetch(`https://api.openai.com/v1${path}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": req.headers["content-type"] || "application/json",
+        "Content-Type": request.headers.get("content-type") || "application/json",
       },
       body: bodyBuffer,
     });
 
-    const data = Buffer.from(await upstream.arrayBuffer());
-    res.status(upstream.status);
-    res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/json");
-    res.send(data);
+    const data = await upstream.arrayBuffer();
+    return new Response(data, {
+      status: upstream.status,
+      headers: { "Content-Type": upstream.headers.get("content-type") || "application/json" },
+    });
   } catch (err) {
-    console.error(err);
-    res.status(502).json({ error: err.message || "Не удалось связаться с OpenAI" });
+    return new Response(JSON.stringify({ error: err.message || "Не удалось связаться с OpenAI" }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
