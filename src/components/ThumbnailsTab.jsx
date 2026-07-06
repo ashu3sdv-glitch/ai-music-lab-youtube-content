@@ -58,6 +58,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
           card={cards.longA}
           onChange={(v) => patchCard("longA", v)}
           variant="A"
+          topicEditable={false}
         />
         <ThumbCard
           label="Обложка Long — вариант Б"
@@ -68,6 +69,7 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
           card={cards.longB}
           onChange={(v) => patchCard("longB", v)}
           variant="B"
+          topicEditable={false}
         />
       </div>
 

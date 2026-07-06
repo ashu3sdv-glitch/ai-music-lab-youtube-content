@@ -6,7 +6,7 @@ import { cropToAspect } from "../lib/crop.js";
 // Универсальная карточка обложки: Long (16:9), Shorts (9:16), Записи (1:1).
 // Пайплайн: промпт (thumbnail-canva через Claude) → gpt-image-2 → обрезка →
 // цикл само-оценки vision-моделью → ручные правки через images.edit.
-export default function ThumbCard({ label, topic, context, aspect, settings, card, onChange, variant }) {
+export default function ThumbCard({ label, topic, context, aspect, settings, card, onChange, variant, topicEditable = true }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [fixText, setFixText] = useState("");
@@ -14,7 +14,11 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
 
   const { openaiKey, visionModel, scoreThreshold, maxAttempts } = settings;
   const state = card || {};
-  const effectiveTopic = state.topic !== undefined ? state.topic : (topic || "");
+  // Для нередактируемой темы (Long) всегда берём тему из сценария, а не
+  // ручной перебив на карточке — тема ролика уже несёт весь нужный контекст.
+  const effectiveTopic = topicEditable
+    ? (state.topic !== undefined ? state.topic : (topic || ""))
+    : (topic || "");
 
   function update(patch) {
     onChange({ ...state, ...patch });
@@ -106,14 +110,20 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
         <strong>{label}</strong>
         <span className="muted">{aspect}</span>
       </div>
-      <div className="field">
-        <label>Тема для обложки (можно поправить отдельно от темы видео)</label>
-        <input
-          value={effectiveTopic}
-          onChange={(e) => update({ topic: e.target.value })}
-          placeholder="Тема ещё не задана"
-        />
-      </div>
+      {topicEditable ? (
+        <div className="field">
+          <label>Тема для обложки (можно поправить отдельно от темы видео)</label>
+          <input
+            value={effectiveTopic}
+            onChange={(e) => update({ topic: e.target.value })}
+            placeholder="Тема ещё не задана"
+          />
+        </div>
+      ) : (
+        <div className="muted small" style={{ marginBottom: 10 }}>
+          Тема берётся из сценария/темы ролика автоматически: {effectiveTopic || "тема ещё не задана"}
+        </div>
+      )}
 
       {state.image && (
         <>
