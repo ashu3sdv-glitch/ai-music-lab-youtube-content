@@ -1,11 +1,11 @@
 import { askClaude, extractJson, jsonHandler } from "./_lib/claude.js";
 import { SKILLS } from "./_lib/skills.js";
 
-const SYSTEM = `Ты создаёшь промпт для генерации обложки (image prompt) канала AI Music Lab. Твоя рабочая инструкция — скилл thumbnail-canva ниже. Следуй ей точно.
+const SYSTEM = `Ты создаёшь промпт для генерации обложки (image prompt) канала AI Music Lab. Твоя рабочая инструкция — скилл thumbnail-generation ниже. Следуй ей точно.
 
-# Скилл: thumbnail-canva
+# Скилл: thumbnail-generation
 
-${SKILLS.thumbnail_canva}
+${SKILLS.thumbnail_generation}
 
 ---
 ВАЖНО ПРО ОБРЕЗКУ: у gpt-image-2 нет ровно нужного соотношения сторон. Картинка сначала генерируется в ближайшем доступном размере, затем обрезается по центру до точного формата — детали безопасной зоны для каждого формата указаны ниже. Не помещай текст, лица и другие важные детали композиции в зону, которая будет обрезана.

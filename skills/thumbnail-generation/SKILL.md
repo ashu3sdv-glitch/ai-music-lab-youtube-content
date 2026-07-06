@@ -1,6 +1,6 @@
 ---
-name: thumbnail-canva
-description: Design thumbnails and generate AI image prompts for YouTube music channel covers. Use for thumbnail concepts, cover art, Canva layouts, and AI image generation prompts for YouTube Long or Shorts videos.
+name: thumbnail-generation
+description: Generate a single, complete AI image-generation prompt for YouTube thumbnails (Long, Shorts, Community) — hero, symbol, text, lighting and background all in one gpt-image-2 call, no separate design-tool assembly step.
 ---
 
 # Thumbnail Designer — AI Music Lab
