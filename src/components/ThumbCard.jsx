@@ -121,7 +121,7 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
         </div>
       ) : (
         <div className="muted small" style={{ marginBottom: 10 }}>
-          Тема берётся из сценария/темы ролика автоматически: {effectiveTopic || "тема ещё не задана"}
+          Тема — из сценария/темы ролика (правится во вкладке YouTube Long)
         </div>
       )}
 
