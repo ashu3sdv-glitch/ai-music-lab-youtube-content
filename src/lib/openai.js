@@ -1,6 +1,8 @@
-// Все запросы к OpenAI идут прямо из браузера с ключом пользователя —
-// ключ не попадает на наш сервер (модель «свой ключ»).
-const BASE = "https://api.openai.com/v1";
+// OpenAI API не поддерживает CORS для запросов напрямую из браузера
+// (see api/openai-proxy.js) — поэтому ключ пользователя передаётся в
+// заголовке на наш собственный serverless-прокси, который транзитом
+// пересылает запрос в OpenAI и не сохраняет и не логирует ключ.
+const PROXY = "/api/openai-proxy";
 
 // Точные YouTube-форматы недоступны у gpt-image-2 — берём ближайший размер,
 // точная обрезка делается на фронтенде (см. crop.js).
@@ -11,9 +13,13 @@ export const SIZE_BY_ASPECT = {
 };
 
 async function openaiFetch(apiKey, path, options) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(PROXY, {
     ...options,
-    headers: { Authorization: `Bearer ${apiKey}`, ...(options.headers || {}) },
+    headers: {
+      "X-OpenAI-Key": apiKey,
+      "X-OpenAI-Path": path,
+      ...(options.headers || {}),
+    },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
