@@ -11,7 +11,10 @@
 // запроса (await request.arrayBuffer()) без риска, что платформа уже
 // распарсила/потребила поток за нас — что произошло бы с классическим
 // req.body в обычной (не Next.js) serverless-функции.
-export const maxDuration = 60;
+//
+// maxDuration для этой функции задан в vercel.json (api/openai-proxy.js →
+// 300 сек) — export const maxDuration в самом файле работает только для
+// Next.js и в обычном проекте (наш случай) молча игнорируется.
 
 export async function POST(request) {
   const path = request.headers.get("x-openai-path");
