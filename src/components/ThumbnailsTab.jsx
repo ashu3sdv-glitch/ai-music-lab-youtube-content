@@ -13,13 +13,14 @@ export default function ThumbnailsTab({ state, setState, settings, longState, sh
   const communityTopics = (communityState?.posts || []).map((p) => p.shortsTopic).filter(Boolean);
 
   // Контекст для промпта обложки — не только тема, а конкретное содержание.
-  // Пересказ (synopsis) из описания — самый плотный источник, приоритет за ним;
-  // сырой сценарий — запасной вариант, пока пересказа ещё нет.
+  // Пересказ (synopsis) задаёт фокус/угол, но сам по себе слишком тонкий
+  // материал для конкретной картинки — полный сценарий передаём тоже,
+  // чтобы было из чего взять конкретную деталь/сцену/пример.
   const synopsis = longState?.description?.synopsis;
-  const longContext = [longState?.description?.title, synopsis || longState?.script]
+  const longContext = [longState?.description?.title, synopsis, longState?.script]
     .filter(Boolean)
     .join("\n\n")
-    .slice(0, 3000);
+    .slice(0, 6000);
 
   function shortsContext(i) {
     const c = shortsState?.cards?.[i];
