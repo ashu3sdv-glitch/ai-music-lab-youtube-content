@@ -36,7 +36,7 @@ export async function generateImage(apiKey, prompt, aspect) {
       model: "gpt-image-2",
       prompt,
       size: SIZE_BY_ASPECT[aspect] || "1024x1024",
-      quality: "high",
+      quality: "medium",
       n: 1,
     }),
   });
