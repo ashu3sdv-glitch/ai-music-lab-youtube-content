@@ -64,7 +64,22 @@ export default function App() {
           отслеживание уже запущенной генерации (хук/сценарий/обложка и т.д.),
           даже если сам запрос на сервере продолжает выполняться. */}
       <div style={{ display: tab === "long" ? "block" : "none" }}>
-        <LongTab state={longState} setState={setLongState} links={links} />
+        <LongTab
+          state={longState}
+          setState={setLongState}
+          links={links}
+          onShortsReady={(shorts) =>
+            setShortsState({
+              cards: (shorts || []).slice(0, 3).map((s) => ({
+                topic: s.topic || "",
+                titles: s.titles || null,
+                description: s.description || "",
+                selectedLinkIds: [],
+              })),
+            })
+          }
+          onCommunityReady={(posts) => setCommunityState((prev) => ({ ...(prev || {}), posts }))}
+        />
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>
         <ShortsTab state={shortsState} setState={setShortsState} links={links} />

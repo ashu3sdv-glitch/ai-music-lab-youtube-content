@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { callApi } from "../lib/api.js";
 import LinksPicker from "./LinksPicker.jsx";
+import CopyButton from "./CopyButton.jsx";
 
 const empty = {
   topic: "",
@@ -13,7 +14,9 @@ const empty = {
 };
 
 // YouTube Long: тема → хуки → сценарий (+правка) → описание/tags (+правка) → план монтажа.
-export default function LongTab({ state, setState, links }) {
+// onShortsReady/onCommunityReady — конвейер «Подготовить тексты»: результаты уходят
+// в состояние вкладок Shorts и Записи (владелец состояния — App).
+export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady }) {
   const data = { ...empty, ...state };
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -91,6 +94,26 @@ export default function LongTab({ state, setState, links }) {
       patch({ editingPlan: plan });
     });
 
+  // Шаг 1 конвейера: сценарий проверен → одним кликом готовим тексты Shorts и Записей.
+  // Обложки (дорогая часть) — отдельно, кнопкой на вкладке «Обложки», после проверки текстов.
+  const prepareTexts = async () => {
+    setError("");
+    try {
+      if (!data.script.trim()) throw new Error("Сначала нужен финальный сценарий");
+      const payload = { topic: data.topic, script: data.script, synopsis: data.description?.synopsis };
+      setBusy("Готовлю тексты (1/2): Shorts из сценария…");
+      const { shorts } = await callApi("generate-shorts", { fromScript: payload });
+      onShortsReady(shorts);
+      setBusy("Готовлю тексты (2/2): посты для Записей…");
+      const { posts } = await callApi("generate-community", payload);
+      onCommunityReady(posts);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
   return (
     <div>
       <div className="card">
@@ -125,7 +148,10 @@ export default function LongTab({ state, setState, links }) {
 
       {data.script && (
         <div className="card">
-          <div className="card-head"><strong>2. Сценарий</strong></div>
+          <div className="card-head">
+            <strong>2. Сценарий</strong>
+            <CopyButton text={() => data.script} />
+          </div>
           <textarea value={data.script} onChange={(e) => patch({ script: e.target.value })} />
           <div className="fix-row">
             <input
@@ -139,6 +165,13 @@ export default function LongTab({ state, setState, links }) {
           <div className="row">
             <button onClick={genDescription} disabled={!!busy}>Сгенерировать описание</button>
             <button className="secondary" onClick={genEditingPlan} disabled={!!busy}>Сгенерировать план монтажа</button>
+          </div>
+          <div className="row">
+            <button onClick={prepareTexts} disabled={!!busy}>Подготовить тексты: Shorts + Записи</button>
+            <span className="muted small">
+              Шаг 1 конвейера: темы и тексты уйдут во вкладки Shorts и Записи. Проверьте их,
+              затем шаг 2 — «Сгенерировать все обложки» на вкладке Обложки.
+            </span>
           </div>
         </div>
       )}
@@ -154,22 +187,34 @@ export default function LongTab({ state, setState, links }) {
         <div className="card">
           <div className="card-head"><strong>3. Описание</strong></div>
           <div className="field">
-            <label>Заголовок — вариант A</label>
+            <div className="label-row">
+              <label>Заголовок — вариант A</label>
+              <CopyButton text={() => data.description.title} />
+            </div>
             <input value={data.description.title} onChange={(e) => patch({ description: { ...data.description, title: e.target.value } })} />
           </div>
           <div className="field">
-            <label>Заголовок — вариант Б (для A/Б-теста в YouTube Studio)</label>
+            <div className="label-row">
+              <label>Заголовок — вариант Б (для A/Б-теста в YouTube Studio)</label>
+              <CopyButton text={() => data.description.titleB || ""} />
+            </div>
             <input value={data.description.titleB || ""} onChange={(e) => patch({ description: { ...data.description, titleB: e.target.value } })} />
           </div>
           <div className="field">
-            <label>Описание (Keywords + хэштеги внутри)</label>
+            <div className="label-row">
+              <label>Описание (Keywords + хэштеги внутри)</label>
+              <CopyButton text={() => data.description.description} />
+            </div>
             <textarea
               value={data.description.description}
               onChange={(e) => patch({ description: { ...data.description, description: e.target.value } })}
             />
           </div>
           <div className="field">
-            <label>Tags (метаданные YouTube, через запятую)</label>
+            <div className="label-row">
+              <label>Tags (метаданные YouTube, через запятую)</label>
+              <CopyButton text={() => data.description.tags} />
+            </div>
             <textarea
               style={{ minHeight: 60 }}
               value={data.description.tags}
@@ -198,7 +243,10 @@ export default function LongTab({ state, setState, links }) {
 
       {data.editingPlan && (
         <div className="card">
-          <div className="card-head"><strong>4. План монтажа</strong></div>
+          <div className="card-head">
+            <strong>4. План монтажа</strong>
+            <CopyButton text={() => data.editingPlan} />
+          </div>
           <textarea value={data.editingPlan} onChange={(e) => patch({ editingPlan: e.target.value })} />
         </div>
       )}

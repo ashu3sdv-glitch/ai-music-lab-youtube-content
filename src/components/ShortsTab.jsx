@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { callApi } from "../lib/api.js";
 import LinksPicker from "./LinksPicker.jsx";
+import CopyButton from "./CopyButton.jsx";
 
 const emptyCard = { topic: "", titles: null, description: null, selectedLinkIds: [] };
 
@@ -86,20 +87,24 @@ export default function ShortsTab({ state, setState, links }) {
                 <div className="field" style={{ marginTop: 12 }}>
                   <label>Варианты заголовка</label>
                   {card.titles.map((t, ti) => (
-                    <input
-                      key={ti}
-                      style={{ marginBottom: 6 }}
-                      value={t}
-                      onChange={(e) => {
-                        const titles = card.titles.slice();
-                        titles[ti] = e.target.value;
-                        patchCard(i, { titles });
-                      }}
-                    />
+                    <div className="copy-input-row" key={ti}>
+                      <input
+                        value={t}
+                        onChange={(e) => {
+                          const titles = card.titles.slice();
+                          titles[ti] = e.target.value;
+                          patchCard(i, { titles });
+                        }}
+                      />
+                      <CopyButton text={t} />
+                    </div>
                   ))}
                 </div>
                 <div className="field">
-                  <label>Описание</label>
+                  <div className="label-row">
+                    <label>Описание</label>
+                    <CopyButton text={() => card.description} />
+                  </div>
                   <textarea style={{ minHeight: 140 }} value={card.description} onChange={(e) => patchCard(i, { description: e.target.value })} />
                 </div>
                 <div className="fix-row">

@@ -188,6 +188,41 @@ button.link {
   margin-bottom: 14px;
 }
 
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.copy-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  color: var(--text);
+}
+
+.copy-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.copy-input-row input {
+  flex: 1;
+  margin-bottom: 0 !important;
+}
+
 .muted {
   color: var(--text-muted);
 }

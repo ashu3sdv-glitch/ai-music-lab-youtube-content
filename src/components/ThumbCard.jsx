@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { callApi } from "../lib/api.js";
-import { generateImage, editImage, scoreImage } from "../lib/openai.js";
+import { editImage } from "../lib/openai.js";
 import { cropToAspect } from "../lib/crop.js";
+import { generateThumbnail } from "../lib/thumbgen.js";
 
 // Универсальная карточка обложки: Long (16:9), Shorts (9:16), Записи (1:1).
 // Пайплайн: промпт (thumbnail-generation через Claude) → gpt-image-2 → обрезка →
@@ -12,7 +12,7 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
   const [fixText, setFixText] = useState("");
   const [showHistory, setShowHistory] = useState(false);
 
-  const { openaiKey, visionModel, scoreThreshold, maxAttempts } = settings;
+  const { openaiKey } = settings;
   // Настройка появилась позже — у старых сохранённых настроек её нет, поэтому фолбэк.
   const imageQuality = settings.imageQuality || "medium";
   const state = card || {};
@@ -32,47 +32,15 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
     setError("");
     setBusy("Генерирую промпт…");
     try {
-      const { prompt } = await callApi("generate-thumbnail-prompt", { topic: effectiveTopic, aspect, context, variant });
-      let currentPrompt = prompt;
-      const attempts = [];
-      let final = null;
-
-      for (let i = 1; i <= maxAttempts; i++) {
-        setBusy(`Попытка ${i}/${maxAttempts}: генерирую картинку…`);
-        const raw = await generateImage(openaiKey, currentPrompt, aspect, imageQuality);
-        const image = await cropToAspect(raw, aspect);
-
-        setBusy(`Попытка ${i}/${maxAttempts}: оцениваю…`);
-        let evalResult;
-        try {
-          evalResult = await scoreImage(openaiKey, visionModel, image, currentPrompt);
-        } catch (e) {
-          // оценка упала — показываем картинку без балла, не теряем результат
-          attempts.push({ image, prompt: currentPrompt, score: null, weaknesses: [e.message] });
-          final = { image, prompt: currentPrompt, score: null };
-          break;
-        }
-
-        attempts.push({
-          image,
-          prompt: currentPrompt,
-          score: evalResult.score,
-          weaknesses: evalResult.weaknesses || [],
-        });
-        final = { image, prompt: currentPrompt, score: evalResult.score };
-
-        if (evalResult.score >= scoreThreshold) break;
-        if (i < maxAttempts && evalResult.improved_prompt) {
-          currentPrompt = evalResult.improved_prompt;
-        }
-      }
-
-      // если порог не взят — показываем лучшую попытку
-      const best = attempts.reduce((a, b) => ((b.score ?? 0) > (a?.score ?? -1) ? b : a), null);
-      if (best && (final?.score ?? 0) < (best.score ?? 0)) {
-        final = { image: best.image, prompt: best.prompt, score: best.score };
-      }
-      update({ ...final, attempts, basePrompt: prompt });
+      const result = await generateThumbnail({
+        settings,
+        topic: effectiveTopic,
+        context,
+        aspect,
+        variant,
+        onProgress: setBusy,
+      });
+      update(result);
     } catch (e) {
       setError(e.message);
     } finally {

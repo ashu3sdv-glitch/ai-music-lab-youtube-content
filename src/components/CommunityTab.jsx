@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { callApi } from "../lib/api.js";
+import CopyButton from "./CopyButton.jsx";
 
 const emptyState = { posts: [], intervalDays: 2, baseDate: "" };
 
@@ -88,7 +89,10 @@ export default function CommunityTab({ state, setState, longState }) {
           <div className="card" key={i}>
             <div className="card-head">
               <strong>Пост #{i + 1}</strong>
-              {data.baseDate && <span className="muted small">{scheduleFor(i)}</span>}
+              <span className="row" style={{ margin: 0 }}>
+                {data.baseDate && <span className="muted small">{scheduleFor(i)}</span>}
+                <CopyButton text={() => post.text} />
+              </span>
             </div>
             <div className="muted small">Ракурс: {post.angle}</div>
             <textarea style={{ minHeight: 120 }} value={post.text} onChange={(e) => {

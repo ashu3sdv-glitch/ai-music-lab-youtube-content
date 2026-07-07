@@ -39,6 +39,18 @@ export default jsonHandler(async (body) => {
     return extractJson(text);
   }
 
+  // Режим конвейера: тем ещё нет — сами выбираем 3 сильных момента из сценария Long.
+  if (body.fromScript) {
+    const { topic, script, synopsis } = body.fromScript;
+    if (!script || !script.trim()) throw new Error("Нет сценария Long-видео");
+    const text = await askClaude({
+      system: SYSTEM,
+      user: `${bioBlock(channelBio)}Готовим нарезку Shorts из готового Long-видео.\n\nТема Long: ${topic || "—"}\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий:\n${script.slice(0, 8000)}\n\nВыбери из сценария 3 САМЫХ сильных самодостаточных момента — приём, пример, результат (три РАЗНЫХ, не пересекающихся угла). Каждый станет отдельным Shorts. Для каждого: поле "topic" — короткая формулировка темы по-русски (она же пойдёт в обложку), плюс описание и 2 варианта заголовка по правилам скилла. Верни JSON с тремя элементами в "shorts".${linksBlock}`,
+      maxTokens: 4000,
+    });
+    return extractJson(text);
+  }
+
   if (!Array.isArray(topics) || !topics.length) {
     throw new Error("Не указаны темы Shorts");
   }
