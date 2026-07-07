@@ -74,6 +74,25 @@ export default function SettingsTab({ links, setLinks, settings, setSettings }) 
       </div>
 
       <div className="card">
+        <div className="card-head"><strong>Генерация обложек</strong></div>
+        <div className="field">
+          <label>Качество картинок (gpt-image-2)</label>
+          <select
+            value={settings.imageQuality || "medium"}
+            onChange={(e) => setSettings({ ...settings, imageQuality: e.target.value })}
+          >
+            <option value="low">low — черновое, самое дешёвое</option>
+            <option value="medium">medium — рабочее (по умолчанию)</option>
+            <option value="high">high — максимальное, ~4 раза дороже medium</option>
+          </select>
+          <div className="muted small" style={{ marginTop: 6 }}>
+            Насыщенность и композиция задаются промптом и от качества не зависят. Для финальной
+            обложки перед публикацией можно переключить на high и перегенерировать.
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
         <div className="card-head"><strong>Само-оценка обложек</strong></div>
         <div className="field">
           <label>Vision-модель</label>

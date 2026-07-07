@@ -28,7 +28,7 @@ async function openaiFetch(apiKey, path, options) {
   return data;
 }
 
-export async function generateImage(apiKey, prompt, aspect) {
+export async function generateImage(apiKey, prompt, aspect, quality = "medium") {
   const data = await openaiFetch(apiKey, "/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -36,7 +36,7 @@ export async function generateImage(apiKey, prompt, aspect) {
       model: "gpt-image-2",
       prompt,
       size: SIZE_BY_ASPECT[aspect] || "1024x1024",
-      quality: "high",
+      quality,
       n: 1,
     }),
   });
@@ -44,14 +44,14 @@ export async function generateImage(apiKey, prompt, aspect) {
 }
 
 // Правка существующей картинки: текущая картинка как референс + инструкция.
-export async function editImage(apiKey, imageDataUrl, prompt, aspect) {
+export async function editImage(apiKey, imageDataUrl, prompt, aspect, quality = "medium") {
   const blob = await (await fetch(imageDataUrl)).blob();
   const form = new FormData();
   form.append("model", "gpt-image-2");
   form.append("image", blob, "image.png");
   form.append("prompt", prompt);
   form.append("size", SIZE_BY_ASPECT[aspect] || "1024x1024");
-  form.append("quality", "high");
+  form.append("quality", quality);
   const data = await openaiFetch(apiKey, "/images/edits", {
     method: "POST",
     body: form,

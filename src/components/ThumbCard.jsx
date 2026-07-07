@@ -13,6 +13,8 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
   const [showHistory, setShowHistory] = useState(false);
 
   const { openaiKey, visionModel, scoreThreshold, maxAttempts } = settings;
+  // Настройка появилась позже — у старых сохранённых настроек её нет, поэтому фолбэк.
+  const imageQuality = settings.imageQuality || "medium";
   const state = card || {};
   // Для нередактируемой темы (Long) всегда берём тему из сценария, а не
   // ручной перебив на карточке — тема ролика уже несёт весь нужный контекст.
@@ -37,7 +39,7 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
 
       for (let i = 1; i <= maxAttempts; i++) {
         setBusy(`Попытка ${i}/${maxAttempts}: генерирую картинку…`);
-        const raw = await generateImage(openaiKey, currentPrompt, aspect);
+        const raw = await generateImage(openaiKey, currentPrompt, aspect, imageQuality);
         const image = await cropToAspect(raw, aspect);
 
         setBusy(`Попытка ${i}/${maxAttempts}: оцениваю…`);
@@ -83,7 +85,7 @@ export default function ThumbCard({ label, topic, context, aspect, settings, car
     setError("");
     setBusy("Переделываю с учётом правки…");
     try {
-      const raw = await editImage(openaiKey, state.image, fixText.trim(), aspect);
+      const raw = await editImage(openaiKey, state.image, fixText.trim(), aspect, imageQuality);
       const image = await cropToAspect(raw, aspect);
       update({
         image,

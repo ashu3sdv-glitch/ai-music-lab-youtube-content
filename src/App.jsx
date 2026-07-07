@@ -21,6 +21,7 @@ const defaultSettings = {
   visionModel: "gpt-5.1",
   scoreThreshold: 7,
   maxAttempts: 3,
+  imageQuality: "medium",
 };
 
 export default function App() {
