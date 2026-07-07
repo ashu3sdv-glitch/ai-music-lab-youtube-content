@@ -36,7 +36,7 @@ export async function generateImage(apiKey, prompt, aspect) {
       model: "gpt-image-2",
       prompt,
       size: SIZE_BY_ASPECT[aspect] || "1024x1024",
-      quality: "medium",
+      quality: "high",
       n: 1,
     }),
   });
@@ -72,7 +72,7 @@ export async function scoreImage(apiKey, visionModel, imageDataUrl, originalProm
           content: [
             {
               type: "text",
-              text: `Это обложка для YouTube. Промпт, по которому она сгенерирована:\n"${originalPrompt}"\n\nОцени её по 10-балльной шкале как YouTube-обложку (читаемость в мелком размере, композиция, эмоция, отсутствие артефактов, соответствие промпту). Верни строго JSON:\n{"score": число 1-10, "weaknesses": ["слабое место", ...], "improved_prompt": "улучшенный промпт с учётом слабых мест (на английском)"}`,
+              text: `Это обложка для YouTube. Промпт, по которому она сгенерирована:\n"${originalPrompt}"\n\nОцени её по 10-балльной шкале как YouTube-обложку (читаемость в мелком размере, композиция, эмоция, отсутствие артефактов, соответствие промпту, НАСЫЩЕННОСТЬ кадра — пустой скучный фон и малое число деталей это серьёзный минус; эталон — плотные яркие обложки топовых обучающих каналов). В improved_prompt никогда не упрощай сцену и не убирай детали ради «чистоты» — только добавляй/исправляй. Верни строго JSON:\n{"score": число 1-10, "weaknesses": ["слабое место", ...], "improved_prompt": "улучшенный промпт с учётом слабых мест (на английском)"}`,
             },
             { type: "image_url", image_url: { url: imageDataUrl } },
           ],
