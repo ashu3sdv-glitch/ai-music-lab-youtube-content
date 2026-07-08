@@ -5,7 +5,8 @@ import CopyButton from "./CopyButton.jsx";
 // Анализ YouTube-видео по ссылке: краткое содержание или разбор конкурента.
 // Claude работает по метаданным + субтитрам (видео он не смотрит), поэтому
 // при недоступных субтитрах результат помечается как ограниченный.
-export default function AnalyzeTab({ state, setState }) {
+// Любой пункт результата можно звёздочкой сохранить в копилку (вкладка «Идеи»).
+export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
   const data = { url: "", mode: "summary", manualTranscript: "", result: null, ...state };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -32,9 +33,40 @@ export default function AnalyzeTab({ state, setState }) {
     }
   }
 
+  function reset() {
+    setError("");
+    patch({ url: "", manualTranscript: "", result: null });
+  }
+
   const r = data.result;
   const a = r?.analysis;
   const isCompetitor = r && a && a.structure !== undefined;
+
+  const savedTexts = new Set((ideas || []).map((i) => i.text));
+
+  function toggleIdea(text) {
+    if (savedTexts.has(text)) {
+      setIdeas((ideas || []).filter((i) => i.text !== text));
+    } else {
+      setIdeas([
+        ...(ideas || []),
+        { id: crypto.randomUUID(), text, source: r?.meta?.title || "", date: new Date().toISOString().slice(0, 10) },
+      ]);
+    }
+  }
+
+  // Звёздочка «в копилку идей» — есть у каждого пункта списка и текстового блока.
+  const star = (text) => (
+    <button
+      type="button"
+      className="link"
+      style={{ marginLeft: 8, flexShrink: 0 }}
+      title={savedTexts.has(text) ? "Убрать из идей" : "Сохранить в идеи"}
+      onClick={() => toggleIdea(text)}
+    >
+      {savedTexts.has(text) ? "★" : "☆"}
+    </button>
+  );
 
   const listBlock = (title, items) =>
     Array.isArray(items) && items.length > 0 ? (
@@ -45,7 +77,10 @@ export default function AnalyzeTab({ state, setState }) {
         </div>
         <ol style={{ margin: 0, paddingLeft: 20 }}>
           {items.map((x, i) => (
-            <li key={i} style={{ marginBottom: 6 }}>{x}</li>
+            <li key={i} style={{ marginBottom: 8 }}>
+              {x}
+              {star(x)}
+            </li>
           ))}
         </ol>
       </div>
@@ -56,7 +91,10 @@ export default function AnalyzeTab({ state, setState }) {
       <div className="card">
         <div className="card-head">
           <strong>{title}</strong>
-          <CopyButton text={text} />
+          <span>
+            {star(text)}
+            <CopyButton text={text} />
+          </span>
         </div>
         <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
       </div>
@@ -111,7 +149,10 @@ export default function AnalyzeTab({ state, setState }) {
             onChange={(e) => patch({ manualTranscript: e.target.value })}
           />
         </details>
-        <button onClick={analyze} disabled={busy}>Анализировать</button>
+        <div className="row">
+          <button onClick={analyze} disabled={busy}>Анализировать</button>
+          <button className="secondary" onClick={reset} disabled={busy}>Сброс</button>
+        </div>
         {busy && <div className="busy">Анализирую видео… (метаданные → субтитры → разбор, до минуты)</div>}
         {error && <div className="error">{error}</div>}
       </div>
@@ -140,6 +181,9 @@ export default function AnalyzeTab({ state, setState }) {
               </div>
             )}
             {a?.note && <div className="muted small" style={{ marginTop: 8 }}>{a.note}</div>}
+            <div className="muted small" style={{ marginTop: 8 }}>
+              ☆ у пункта — сохранить его в копилку (вкладка «Идеи»).
+            </div>
           </div>
 
           {isCompetitor ? (
@@ -148,12 +192,14 @@ export default function AnalyzeTab({ state, setState }) {
               {listBlock("Структура ролика", a.structure)}
               {listBlock("Приёмы удержания", a.retention)}
               {textBlock("Призывы к действию (CTA)", a.cta)}
-              {listBlock("Что позаимствовать для AI Music Lab", a.takeaways)}
+              {listBlock("Что позаимствовать", a.takeaways)}
+              {listBlock("💡 Ценные идеи и принципы", a.insights)}
             </>
           ) : (
             <>
               {textBlock("О чём видео", a?.about)}
               {listBlock("Ключевые тезисы", a?.key_points)}
+              {listBlock("💡 Ценные идеи и принципы", a?.insights)}
               {textBlock("Целевая аудитория", a?.audience)}
             </>
           )}

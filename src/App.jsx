@@ -6,6 +6,7 @@ import ThumbnailsTab from "./components/ThumbnailsTab.jsx";
 import TimecodesTab from "./components/TimecodesTab.jsx";
 import CommunityTab from "./components/CommunityTab.jsx";
 import AnalyzeTab from "./components/AnalyzeTab.jsx";
+import IdeasTab from "./components/IdeasTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
 
 const TABS = [
@@ -15,6 +16,7 @@ const TABS = [
   { id: "timecodes", label: "Таймкоды" },
   { id: "community", label: "Записи" },
   { id: "analyze", label: "Анализ видео" },
+  { id: "ideas", label: "Идеи" },
   { id: "settings", label: "Настройки" },
 ];
 
@@ -37,6 +39,7 @@ export default function App() {
   const [timecodesState, setTimecodesState] = usePersistentState("timecodes", {});
   const [communityState, setCommunityState] = usePersistentState("community", {});
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
+  const [ideas, setIdeas] = usePersistentState("ideas", []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -104,7 +107,10 @@ export default function App() {
         <CommunityTab state={communityState} setState={setCommunityState} longState={longState} />
       </div>
       <div style={{ display: tab === "analyze" ? "block" : "none" }}>
-        <AnalyzeTab state={analyzeState} setState={setAnalyzeState} />
+        <AnalyzeTab state={analyzeState} setState={setAnalyzeState} ideas={ideas} setIdeas={setIdeas} />
+      </div>
+      <div style={{ display: tab === "ideas" ? "block" : "none" }}>
+        <IdeasTab ideas={ideas} setIdeas={setIdeas} />
       </div>
       <div style={{ display: tab === "settings" ? "block" : "none" }}>
         <SettingsTab links={links} setLinks={setLinks} settings={settings} setSettings={setSettings} />
