@@ -109,13 +109,16 @@ ${JSON_RULES}
 };
 
 export default jsonHandler(async (body) => {
-  const { url, mode = "summary", channelBio } = body;
+  const { url, mode = "summary", channelBio, manualTranscript } = body;
   const videoId = parseVideoId(url);
   if (!videoId) throw new Error("Не удалось распознать ссылку на YouTube");
   const system = SYSTEMS[mode] || SYSTEMS.summary;
 
   const meta = await fetchMeta(videoId);
-  const rawTranscript = await fetchTranscript(videoId);
+  // Ручная вставка субтитров — приоритетный источник: YouTube всё чаще
+  // блокирует автоматическую выдачу субтитров датацентровым IP Vercel.
+  const manual = (manualTranscript || "").replace(/\s+/g, " ").trim();
+  const rawTranscript = manual || (await fetchTranscript(videoId));
   const { text: transcript, truncated } = rawTranscript
     ? truncateTranscript(rawTranscript)
     : { text: null, truncated: false };
@@ -144,6 +147,6 @@ export default jsonHandler(async (body) => {
   return {
     meta,
     analysis,
-    transcriptStatus: transcript ? (truncated ? "truncated" : "full") : "none",
+    transcriptStatus: transcript ? (manual ? "manual" : truncated ? "truncated" : "full") : "none",
   };
 });
