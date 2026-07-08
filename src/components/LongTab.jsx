@@ -88,7 +88,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
     });
 
   const genEditingPlan = () =>
-    run("Составляю план монтажа…", async () => {
+    run("Подбираю мемы и врезки…", async () => {
       if (!data.script.trim()) throw new Error("Сначала нужен финальный сценарий");
       const { plan } = await callApi("generate-editing-plan", { script: data.script });
       patch({ editingPlan: plan });
@@ -164,7 +164,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
           </div>
           <div className="row">
             <button onClick={genDescription} disabled={!!busy}>Сгенерировать описание</button>
-            <button className="secondary" onClick={genEditingPlan} disabled={!!busy}>Сгенерировать план монтажа</button>
+            <button className="secondary" onClick={genEditingPlan} disabled={!!busy}>Подобрать мемы и врезки</button>
           </div>
           <div className="row">
             <button onClick={prepareTexts} disabled={!!busy}>Подготовить тексты: Shorts + Записи</button>
@@ -244,7 +244,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
       {data.editingPlan && (
         <div className="card">
           <div className="card-head">
-            <strong>4. План монтажа</strong>
+            <strong>4. Мемы и врезки</strong>
             <CopyButton text={() => data.editingPlan} />
           </div>
           <textarea value={data.editingPlan} onChange={(e) => patch({ editingPlan: e.target.value })} />
