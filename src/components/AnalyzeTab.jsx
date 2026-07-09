@@ -7,35 +7,54 @@ import CopyButton from "./CopyButton.jsx";
 // при недоступных субтитрах результат помечается как ограниченный.
 // Любой пункт результата можно звёздочкой сохранить в копилку (вкладка «Идеи»).
 export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
-  const data = { url: "", mode: "summary", manualTranscript: "", result: null, ...state };
-  const [busy, setBusy] = useState(false);
+  const data = { url: "", mode: "summary", manualTranscript: "", manualOpen: false, result: null, ...state };
+  const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   function patch(p) {
     setState({ ...data, ...p });
   }
 
-  async function analyze() {
+  // Двухшаговый поток: сначала быстрая проверка субтитров (пара секунд),
+  // и только при их наличии — долгий анализ. Если субтитров нет — сразу
+  // говорим об этом и открываем поле ручной вставки, не гоняя анализ впустую.
+  async function analyze(force = false) {
     if (!data.url.trim()) return setError("Вставьте ссылку на YouTube-видео");
     setError("");
-    setBusy(true);
+    setNotice("");
     try {
+      const manual = data.manualTranscript.trim();
+      if (!manual && !force) {
+        setBusy("Проверяю видео и доступность субтитров…");
+        const check = await callApi("analyze-video", { url: data.url.trim(), stage: "check" });
+        if (!check.hasTranscript) {
+          setBusy("");
+          patch({ manualOpen: true });
+          setNotice(
+            `Субтитры для «${check.meta.title}» недоступны. Вставь текст видео в поле «Субтитры вручную» ниже и нажми «Анализировать» ещё раз — или запусти ограниченный анализ без субтитров.`
+          );
+          return;
+        }
+      }
+      setBusy("Анализирую видео… (развёрнутый разбор, для длинных видео до 2-3 минут)");
       const result = await callApi("analyze-video", {
         url: data.url.trim(),
         mode: data.mode,
-        manualTranscript: data.manualTranscript.trim() || undefined,
+        manualTranscript: manual || undefined,
       });
       patch({ result });
     } catch (e) {
       setError(e.message);
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
   function reset() {
     setError("");
-    patch({ url: "", manualTranscript: "", result: null });
+    setNotice("");
+    patch({ url: "", manualTranscript: "", manualOpen: false, result: null });
   }
 
   const r = data.result;
@@ -133,7 +152,10 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
             </label>
           </div>
         </div>
-        <details style={{ marginBottom: 12 }} open={data.result?.transcriptStatus === "none" || undefined}>
+        <details
+          style={{ marginBottom: 12 }}
+          open={data.manualOpen || data.result?.transcriptStatus === "none" || undefined}
+        >
           <summary style={{ cursor: "pointer" }} className="muted small">
             Субтитры вручную (если автоматически не достались)
           </summary>
@@ -150,10 +172,16 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
           />
         </details>
         <div className="row">
-          <button onClick={analyze} disabled={busy}>Анализировать</button>
-          <button className="secondary" onClick={reset} disabled={busy}>Сброс</button>
+          <button onClick={() => analyze(false)} disabled={!!busy}>Анализировать</button>
+          {notice && (
+            <button className="secondary" onClick={() => analyze(true)} disabled={!!busy}>
+              Анализировать без субтитров
+            </button>
+          )}
+          <button className="secondary" onClick={reset} disabled={!!busy}>Сброс</button>
         </div>
-        {busy && <div className="busy">Анализирую видео… (метаданные → субтитры → разбор, до минуты)</div>}
+        {busy && <div className="busy">{busy}</div>}
+        {notice && <div className="muted" style={{ marginTop: 8 }}>{notice}</div>}
         {error && <div className="error">{error}</div>}
       </div>
 

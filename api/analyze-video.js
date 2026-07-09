@@ -1,5 +1,5 @@
 import { YoutubeTranscript } from "youtube-transcript";
-import { askClaude, extractJson, jsonHandler, bioBlock } from "./_lib/claude.js";
+import { askClaude, extractJson, bioBlock } from "./_lib/claude.js";
 
 // Анализатор YouTube-видео: ссылка → метаданные (YouTube Data API v3) +
 // транскрипт (внутренний timedtext API) → структурированный разбор от Claude.
@@ -118,7 +118,18 @@ ${JSON_RULES}
  "note": "если анализ ограничен (нет субтитров/усечён транскрипт) — одно предложение об этом, иначе пустая строка"}`,
 };
 
-export default jsonHandler(async (body) => {
+// Лёгкая проверка перед анализом: метаданные + доступность субтитров.
+// Без вызова Claude — отвечает за пару секунд, чтобы пользователь сразу
+// узнал, нужно ли вставлять текст вручную, а не ждал анализа впустую.
+async function checkVideo({ url }) {
+  const videoId = parseVideoId(url);
+  if (!videoId) throw new Error("Не удалось распознать ссылку на YouTube");
+  const meta = await fetchMeta(videoId);
+  const transcript = await fetchTranscript(videoId);
+  return { meta, hasTranscript: !!transcript };
+}
+
+async function analyze(body) {
   const { url, mode = "summary", channelBio, manualTranscript } = body;
   const videoId = parseVideoId(url);
   if (!videoId) throw new Error("Не удалось распознать ссылку на YouTube");
@@ -159,4 +170,46 @@ export default jsonHandler(async (body) => {
     analysis,
     transcriptStatus: transcript ? (manual ? "manual" : truncated ? "truncated" : "full") : "none",
   };
-});
+}
+
+// Полный анализ отдаётся потоково: раз в 10 секунд в ответ пишется пробел
+// (heartbeat), чтобы прокси не убивали «молчащее» соединение, пока Claude
+// несколько минут пишет развёрнутый разбор — иначе браузер получал
+// «Failed to fetch» на длинных видео. Пробелы перед JSON безопасны:
+// res.json()/JSON.parse игнорируют ведущие пробелы.
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Только POST" });
+    return;
+  }
+  const body = req.body || {};
+
+  if (body.stage === "check") {
+    try {
+      res.status(200).json(await checkVideo(body));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message || "Внутренняя ошибка" });
+    }
+    return;
+  }
+
+  res.status(200).setHeader("Content-Type", "application/json; charset=utf-8");
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(" ");
+    } catch {
+      // соединение уже закрыто — финальный write просто не дойдёт
+    }
+  }, 10000);
+  try {
+    const result = await analyze(body);
+    res.write(JSON.stringify(result));
+  } catch (err) {
+    console.error(err);
+    res.write(JSON.stringify({ error: err.message || "Внутренняя ошибка" }));
+  } finally {
+    clearInterval(heartbeat);
+    res.end();
+  }
+}
