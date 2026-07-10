@@ -5,6 +5,7 @@ import ShortsTab from "./components/ShortsTab.jsx";
 import ThumbnailsTab from "./components/ThumbnailsTab.jsx";
 import TimecodesTab from "./components/TimecodesTab.jsx";
 import CommunityTab from "./components/CommunityTab.jsx";
+import SocialTab from "./components/SocialTab.jsx";
 import AnalyzeTab from "./components/AnalyzeTab.jsx";
 import IdeasTab from "./components/IdeasTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
@@ -15,6 +16,7 @@ const TABS = [
   { id: "thumbnails", label: "Обложки" },
   { id: "timecodes", label: "Таймкоды" },
   { id: "community", label: "Записи" },
+  { id: "social", label: "Соцсети" },
   { id: "analyze", label: "Анализ видео" },
   { id: "ideas", label: "Идеи" },
   { id: "settings", label: "Настройки" },
@@ -38,6 +40,7 @@ export default function App() {
   const [thumbState, setThumbState] = usePersistentState("thumbnails", {});
   const [timecodesState, setTimecodesState] = usePersistentState("timecodes", {});
   const [communityState, setCommunityState] = usePersistentState("community", {});
+  const [socialState, setSocialState] = usePersistentState("social", {});
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
   const [ideas, setIdeas] = usePersistentState("ideas", []);
 
@@ -85,6 +88,9 @@ export default function App() {
             })
           }
           onCommunityReady={(posts) => setCommunityState((prev) => ({ ...(prev || {}), posts }))}
+          onSocialReady={({ telegram, boosty }) =>
+            setSocialState({ telegram: telegram || [], boosty: boosty || [] })
+          }
         />
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>
@@ -105,6 +111,9 @@ export default function App() {
       </div>
       <div style={{ display: tab === "community" ? "block" : "none" }}>
         <CommunityTab state={communityState} setState={setCommunityState} longState={longState} />
+      </div>
+      <div style={{ display: tab === "social" ? "block" : "none" }}>
+        <SocialTab state={socialState} setState={setSocialState} longState={longState} />
       </div>
       <div style={{ display: tab === "analyze" ? "block" : "none" }}>
         <AnalyzeTab state={analyzeState} setState={setAnalyzeState} ideas={ideas} setIdeas={setIdeas} />

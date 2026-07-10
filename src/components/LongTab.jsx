@@ -14,9 +14,9 @@ const empty = {
 };
 
 // YouTube Long: тема → хуки → сценарий (+правка) → описание/tags (+правка) → план монтажа.
-// onShortsReady/onCommunityReady — конвейер «Подготовить тексты»: результаты уходят
-// в состояние вкладок Shorts и Записи (владелец состояния — App).
-export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady }) {
+// onShortsReady/onCommunityReady/onSocialReady — конвейер «Подготовить тексты»: результаты
+// уходят в состояние вкладок Shorts, Записи и Соцсети (владелец состояния — App).
+export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady, onSocialReady }) {
   const data = { ...empty, ...state };
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -101,12 +101,15 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
     try {
       if (!data.script.trim()) throw new Error("Сначала нужен финальный сценарий");
       const payload = { topic: data.topic, script: data.script, synopsis: data.description?.synopsis };
-      setBusy("Готовлю тексты (1/2): Shorts из сценария…");
+      setBusy("Готовлю тексты (1/3): Shorts из сценария…");
       const { shorts } = await callApi("generate-shorts", { fromScript: payload });
       onShortsReady(shorts);
-      setBusy("Готовлю тексты (2/2): посты для Записей…");
+      setBusy("Готовлю тексты (2/3): посты для Записей…");
       const { posts } = await callApi("generate-community", payload);
       onCommunityReady(posts);
+      setBusy("Готовлю тексты (3/3): Telegram и Boosty…");
+      const social = await callApi("generate-social", payload);
+      onSocialReady(social);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -167,10 +170,10 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
             <button className="secondary" onClick={genEditingPlan} disabled={!!busy}>Подобрать мемы и врезки</button>
           </div>
           <div className="row">
-            <button onClick={prepareTexts} disabled={!!busy}>Подготовить тексты: Shorts + Записи</button>
+            <button onClick={prepareTexts} disabled={!!busy}>Подготовить тексты: Shorts + Записи + Соцсети</button>
             <span className="muted small">
-              Шаг 1 конвейера: темы и тексты уйдут во вкладки Shorts и Записи. Проверьте их,
-              затем шаг 2 — «Сгенерировать все обложки» на вкладке Обложки.
+              Шаг 1 конвейера: темы и тексты уйдут во вкладки Shorts, Записи и Соцсети (Telegram/Boosty).
+              Проверьте их, затем шаг 2 — «Сгенерировать все обложки» на вкладке Обложки.
             </span>
           </div>
         </div>
