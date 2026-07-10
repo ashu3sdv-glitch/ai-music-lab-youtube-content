@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { callApi } from "../lib/api.js";
 import CopyButton from "./CopyButton.jsx";
+import { makeIdea, condenseIdea } from "./IdeasTab.jsx";
 
 // Анализ YouTube-видео по ссылке: краткое содержание или разбор конкурента.
 // Claude работает по метаданным + субтитрам (видео он не смотрит), поэтому
@@ -76,10 +77,10 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
     if (savedTexts.has(text)) {
       setIdeas((ideas || []).filter((i) => i.text !== text));
     } else {
-      setIdeas([
-        ...(ideas || []),
-        { id: crypto.randomUUID(), text, source: r?.meta?.title || "", date: new Date().toISOString().slice(0, 10) },
-      ]);
+      const idea = makeIdea(text, r?.meta?.title || "анализ текста");
+      setIdeas([...(ideas || []), idea]);
+      // в фоне: суть в одно предложение + автокатегория (вкладка «Идеи»)
+      condenseIdea(idea, setIdeas);
     }
   }
 
