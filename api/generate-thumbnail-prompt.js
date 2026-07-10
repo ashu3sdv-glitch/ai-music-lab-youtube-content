@@ -32,6 +32,20 @@ const FORMAT_NOTES = {
   "1:1": "Community post image, квадрат 1:1 — генерируется точно в размер, обрезка не требуется, можно использовать весь кадр.",
 };
 
+// «Внешний» режим: промпт уйдёт в ChatGPT (подписка), картинка используется
+// как есть, без нашей пост-обрезки — инструкции про срезание краёв кодом
+// здесь не только не нужны, но и вредны.
+const EXTERNAL_FORMAT_NOTES = {
+  "16:9":
+    "YouTube Long thumbnail, горизонтальный 16:9. Картинка используется ЦЕЛИКОМ, никакой пост-обрезки не будет. Заголовок — в верхней части с небольшим отступом от верхнего края; ключевые детали не прижимай к краям; правый нижний угол оставь без важного (там YouTube рисует плашку длительности).",
+  "9:16":
+    "YouTube Shorts cover, вертикальный 9:16. Картинка используется ЦЕЛИКОМ, без пост-обрезки. Баннеры и ключевые детали — с небольшими отступами от всех краёв.",
+  "1:1": "Community post image, квадрат 1:1 — используется целиком.",
+};
+
+const SHORTS_STYLE_NOTE_EXTERNAL =
+  "ФОРМАТ 9:16: хорошо работает вертикальный стек из 2-4 коротких текстовых баннеров на контрастных цветных плашках (затравка → крупный заголовок → уточнение) + человек с яркой эмоцией + насыщенная сцена по теме.";
+
 const SHORTS_STYLE_NOTE =
   "ФОРМАТ 9:16: хорошо работает вертикальный стек из 2-4 коротких текстовых баннеров на контрастных цветных плашках (затравка → крупный заголовок → уточнение) + человек с яркой эмоцией + насыщенная сцена по теме. ВАЖНО (механика обрезки): баннеры не прижимай к левому краю — требуй в промпте отступ, например \"banners start with a clear margin from the left edge\", иначе первые буквы могут пострадать при генерации у самого края.";
 
@@ -41,14 +55,16 @@ const VARIANT_NOTE = {
 };
 
 export default jsonHandler(async (body) => {
-  const { topic, aspect = "16:9", context, variant, channelBio } = body;
+  const { topic, aspect = "16:9", context, variant, channelBio, external } = body;
   if (!topic) throw new Error("Не указана тема для обложки");
   const trimmedContext = context ? context.slice(0, 6000) : "";
   const variantNote = VARIANT_NOTE[variant] ? `\n\n${VARIANT_NOTE[variant]}` : "";
-  const shortsNote = aspect === "9:16" ? `\n\n${SHORTS_STYLE_NOTE}` : "";
+  const formatNotes = external ? EXTERNAL_FORMAT_NOTES : FORMAT_NOTES;
+  const shortsNote =
+    aspect === "9:16" ? `\n\n${external ? SHORTS_STYLE_NOTE_EXTERNAL : SHORTS_STYLE_NOTE}` : "";
   const text = await askClaude({
     system: SYSTEM,
-    user: `${bioBlock(channelBio)}Тема: ${topic}\n\nФормат: ${FORMAT_NOTES[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — строй сцену из его конкретики):\n${trimmedContext}` : ""}${shortsNote}${variantNote}\n\nСгенерируй промпт обложки.`,
+    user: `${bioBlock(channelBio)}Тема: ${topic}\n\nФормат: ${formatNotes[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — строй сцену из его конкретики):\n${trimmedContext}` : ""}${shortsNote}${variantNote}\n\nСгенерируй промпт обложки.`,
     maxTokens: 2000,
   });
   return extractJson(text);
