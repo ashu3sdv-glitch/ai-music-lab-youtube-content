@@ -131,28 +131,32 @@ async function checkVideo({ url }) {
 
 async function analyze(body) {
   const { url, mode = "summary", channelBio, manualTranscript } = body;
-  const videoId = parseVideoId(url);
-  if (!videoId) throw new Error("Не удалось распознать ссылку на YouTube");
   const system = SYSTEMS[mode] || SYSTEMS.summary;
+  const manual = (manualTranscript || "").replace(/\s+/g, " ").trim();
+  const videoId = parseVideoId(url);
+  if (!videoId && !manual) throw new Error("Нужна ссылка на YouTube или вставленный текст");
 
-  const meta = await fetchMeta(videoId);
+  // Режим «просто текст»: без ссылки YouTube не трогаем вообще — анализируем
+  // вставленный пользователем текст напрямую.
+  const meta = videoId ? await fetchMeta(videoId) : null;
   // Ручная вставка субтитров — приоритетный источник: YouTube всё чаще
   // блокирует автоматическую выдачу субтитров датацентровым IP Vercel.
-  const manual = (manualTranscript || "").replace(/\s+/g, " ").trim();
-  const rawTranscript = manual || (await fetchTranscript(videoId));
+  const rawTranscript = manual || (videoId ? await fetchTranscript(videoId) : null);
   const { text: transcript, truncated } = rawTranscript
     ? truncateTranscript(rawTranscript)
     : { text: null, truncated: false };
 
-  const metaBlock = [
-    `Название: ${meta.title}`,
-    `Канал: ${meta.channel}`,
-    `Опубликовано: ${meta.publishedAt}, длительность: ${meta.duration}, просмотры: ${meta.views}`,
-    meta.tags.length ? `Теги: ${meta.tags.slice(0, 20).join(", ")}` : "",
-    `Описание:\n${meta.description.slice(0, 1500)}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const metaBlock = meta
+    ? [
+        `Название: ${meta.title}`,
+        `Канал: ${meta.channel}`,
+        `Опубликовано: ${meta.publishedAt}, длительность: ${meta.duration}, просмотры: ${meta.views}`,
+        meta.tags.length ? `Теги: ${meta.tags.slice(0, 20).join(", ")}` : "",
+        `Описание:\n${meta.description.slice(0, 1500)}`,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "Метаданных видео нет — пользователь вставил текст напрямую (субтитры/конспект), анализируй его.";
 
   const transcriptBlock = transcript
     ? `Транскрипт (субтитры)${truncated ? " — УСЕЧЁН: первые ~40% и последние ~15%" : ""}:\n${transcript}`
@@ -161,7 +165,7 @@ async function analyze(body) {
   const text = await askClaude({
     system,
     user: `${bioBlock(channelBio)}${metaBlock}\n\n${transcriptBlock}\n\nСделай анализ.`,
-    maxTokens: 8000,
+    maxTokens: 5000,
   });
   const analysis = extractJson(text);
 
@@ -199,14 +203,20 @@ export default async function handler(req, res) {
     return;
   }
 
-  res.status(200).setHeader("Content-Type", "application/json; charset=utf-8");
+  res.status(200);
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  // no-transform: просим границу Vercel не сжимать ответ. Иначе gzip-буфер
+  // копит heartbeat-байты, клиент их не видит, соединение выглядит мёртвым
+  // и обрывается (проверено: по одному пробелу раз в 10 сек не спасало).
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   const heartbeat = setInterval(() => {
     try {
-      res.write(" ");
+      // крупная порция, чтобы гарантированно пробить любые буферы по пути
+      res.write(" ".repeat(2048));
     } catch {
       // соединение уже закрыто — финальный write просто не дойдёт
     }
-  }, 10000);
+  }, 5000);
   try {
     const result = await analyze(body);
     res.write(JSON.stringify(result));

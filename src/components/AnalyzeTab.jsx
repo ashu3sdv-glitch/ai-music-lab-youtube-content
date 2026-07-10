@@ -20,11 +20,12 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
   // и только при их наличии — долгий анализ. Если субтитров нет — сразу
   // говорим об этом и открываем поле ручной вставки, не гоняя анализ впустую.
   async function analyze(force = false) {
-    if (!data.url.trim()) return setError("Вставьте ссылку на YouTube-видео");
+    const manual = data.manualTranscript.trim();
+    if (!data.url.trim() && !manual)
+      return setError("Вставьте ссылку на видео — или просто текст в поле «Субтитры вручную» (тогда ссылка не нужна)");
     setError("");
     setNotice("");
     try {
-      const manual = data.manualTranscript.trim();
       if (!manual && !force) {
         setBusy("Проверяю видео и доступность субтитров…");
         const check = await callApi("analyze-video", { url: data.url.trim(), stage: "check" });
@@ -37,9 +38,9 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
           return;
         }
       }
-      setBusy("Анализирую видео… (развёрнутый разбор, для длинных видео до 2-3 минут)");
+      setBusy("Анализирую… (развёрнутый разбор, до 2-3 минут)");
       const result = await callApi("analyze-video", {
-        url: data.url.trim(),
+        url: data.url.trim() || undefined,
         mode: data.mode,
         manualTranscript: manual || undefined,
       });
@@ -130,7 +131,7 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
       <div className="card">
         <div className="card-head"><strong>Анализ YouTube-видео</strong></div>
         <div className="field">
-          <label>Ссылка на видео (своё или конкурента)</label>
+          <label>Ссылка на видео (необязательно — можно вставить только текст ниже)</label>
           <input
             value={data.url}
             onChange={(e) => patch({ url: e.target.value })}
@@ -163,7 +164,7 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
           open={data.manualOpen || data.result?.transcriptStatus === "none" || undefined}
         >
           <summary style={{ cursor: "pointer" }} className="muted small">
-            Субтитры вручную (если автоматически не достались)
+            Субтитры / текст вручную (работает и вовсе без ссылки)
           </summary>
           <div className="muted small" style={{ margin: "8px 0" }}>
             YouTube часто не отдаёт субтитры нашему серверу. Надёжный способ: открой видео на YouTube →
@@ -194,10 +195,12 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
       {r && (
         <>
           <div className="card">
-            <div className="card-head"><strong>{r.meta.title}</strong></div>
-            <div className="muted small">
-              {r.meta.channel} · {r.meta.publishedAt} · {r.meta.duration} · {r.meta.views.toLocaleString("ru-RU")} просмотров
-            </div>
+            <div className="card-head"><strong>{r.meta ? r.meta.title : "Анализ вставленного текста"}</strong></div>
+            {r.meta && (
+              <div className="muted small">
+                {r.meta.channel} · {r.meta.publishedAt} · {r.meta.duration} · {r.meta.views.toLocaleString("ru-RU")} просмотров
+              </div>
+            )}
             {r.transcriptStatus === "none" && (
               <div className="error" style={{ marginTop: 8 }}>
                 Субтитры недоступны — ограниченный анализ только по метаданным. Для полного анализа
