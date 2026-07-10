@@ -44,7 +44,8 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
         mode: data.mode,
         manualTranscript: manual || undefined,
       });
-      if (!result?.meta || !result?.analysis) {
+      // meta может быть null — это законный режим «только текст, без ссылки»
+      if (!result?.analysis) {
         throw new Error("Анализ не завершился — сервер вернул неполный ответ. Попробуйте ещё раз.");
       }
       patch({ result });
@@ -63,8 +64,9 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
 
   // Битый результат (например, обрывок ответа, сохранившийся в localStorage
   // до этой защиты) не рисуем вообще — раньше это роняло всё приложение в
-  // белый экран при каждой загрузке страницы.
-  const r = data.result?.meta && data.result?.analysis ? data.result : null;
+  // белый экран при каждой загрузке страницы. meta может быть null (режим
+  // «только текст») — обязателен лишь analysis.
+  const r = data.result?.analysis ? data.result : null;
   const a = r?.analysis;
   const isCompetitor = r && a && a.structure !== undefined;
 
