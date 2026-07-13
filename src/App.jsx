@@ -94,7 +94,7 @@ export default function App() {
         />
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>
-        <ShortsTab state={shortsState} setState={setShortsState} links={links} />
+        <ShortsTab state={shortsState} setState={setShortsState} links={links} longState={longState} />
       </div>
       <div style={{ display: tab === "thumbnails" ? "block" : "none" }}>
         <ThumbnailsTab

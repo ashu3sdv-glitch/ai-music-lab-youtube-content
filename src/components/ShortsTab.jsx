@@ -6,8 +6,9 @@ import CopyButton from "./CopyButton.jsx";
 const emptyCard = { topic: "", titles: null, description: null, selectedLinkIds: [] };
 
 // 3 карточки YouTube Shorts: тема → описание + 2 заголовка, генерация все сразу
-// или по одной, точечная правка на каждой карточке отдельно.
-export default function ShortsTab({ state, setState, links }) {
+// или по одной, точечная правка на каждой карточке отдельно. Кнопка «из сценария»
+// перевыбирает темы по шагам Long-сценария, не перегенерируя Записи/Соцсети.
+export default function ShortsTab({ state, setState, links, longState }) {
   const cards = state?.cards || [emptyCard, emptyCard, emptyCard];
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -51,6 +52,28 @@ export default function ShortsTab({ state, setState, links }) {
       setCards(cards.map((c, i) => ({ ...c, titles: shorts[i].titles, description: shorts[i].description })));
     });
 
+  // Перевыбор тем из сценария Long (Shorts #N = Шаг N) — только эта вкладка,
+  // без перегенерации Записей и Соцсетей, в отличие от «Подготовить тексты».
+  const genFromScript = () =>
+    run("Беру 3 темы из шагов сценария…", async () => {
+      if (!longState?.script?.trim()) throw new Error("Сначала нужен сценарий во вкладке YouTube Long");
+      const { shorts } = await callApi("generate-shorts", {
+        fromScript: {
+          topic: longState.topic,
+          script: longState.script,
+          synopsis: longState.description?.synopsis,
+        },
+      });
+      setCards(
+        cards.map((c, i) => ({
+          ...c,
+          topic: shorts[i]?.topic ?? c.topic,
+          titles: shorts[i]?.titles ?? null,
+          description: shorts[i]?.description ?? null,
+        }))
+      );
+    });
+
   const rework = (i) =>
     run(`Переделываю карточку ${i + 1}…`, async () => {
       const instruction = fixText[i];
@@ -70,6 +93,9 @@ export default function ShortsTab({ state, setState, links }) {
     <div>
       <div className="row">
         <button onClick={genAll} disabled={!!busy}>Сгенерировать все 3</button>
+        <button className="secondary" onClick={genFromScript} disabled={!!busy}>
+          Заново из сценария (Shorts = Шаг 1/2/3)
+        </button>
       </div>
       <div className="grid-3">
         {cards.map((card, i) => (
