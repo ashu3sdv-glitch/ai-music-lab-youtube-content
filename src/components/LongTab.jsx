@@ -78,6 +78,9 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         topic: data.topic,
         currentScript: data.script,
         instruction: scriptFix.trim(),
+        // актуальный выбранный хук: если его точечно переделали после генерации
+        // сценария, правка сценария обязана подтянуть новое начало
+        hook: data.hooks[data.selectedHookIndex]?.text,
       });
       patch({ script });
       setScriptFix("");
