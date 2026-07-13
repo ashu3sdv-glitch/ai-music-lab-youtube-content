@@ -1,4 +1,6 @@
-import { askClaude, extractJson, jsonHandler, bioBlock } from "./_lib/claude.js";
+import { askClaude, extractJson, jsonHandler, bioBlock, CHEAP_MODEL } from "./_lib/claude.js";
+// Посты для Telegram/Boosty пишет дешёвая модель: разговорный тон по чёткому
+// шаблону для уже лояльной аудитории — качества хватает, чтение в ~3 раза дешевле.
 
 // Посты для Telegram-канала и Boosty из готового сценария Long-видео.
 // Картинки сознательно не генерируются: Telegram должен ощущаться живым
@@ -29,7 +31,7 @@ export default jsonHandler(async (body, usage) => {
   // Режим точечной правки одного поста.
   if (current && instruction) {
     const isBoosty = platform === "boosty";
-    const text = await askClaude({ usage,
+    const text = await askClaude({ usage, model: CHEAP_MODEL,
       system: SYSTEM,
       user: `${bioBlock(channelBio)}Текущий пост для ${isBoosty ? "Boosty" : "Telegram"} (тип «${current.angle || "—"}»):\n\n${isBoosty && current.title ? `Заголовок: ${current.title}\n` : ""}${current.text}\n\nПерепиши его с учётом правки: «${instruction}». Верни JSON, где в массиве "${isBoosty ? "boosty" : "telegram"}" ровно один переписанный пост, а второй массив пустой.`,
       maxTokens: 1500,
@@ -38,7 +40,7 @@ export default jsonHandler(async (body, usage) => {
   }
 
   if (!topic && !script && !synopsis) throw new Error("Нет темы, пересказа или сценария главного ролика");
-  const text = await askClaude({ usage,
+  const text = await askClaude({ usage, model: CHEAP_MODEL,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Тема Long-видео: ${topic || "—"}\n\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий (источник конкретных деталей):\n${script ? script.slice(0, 6000) : "—"}\n\nНапиши 3-4 поста для Telegram и 2 поста для Boosty.`,
     maxTokens: 4000,
