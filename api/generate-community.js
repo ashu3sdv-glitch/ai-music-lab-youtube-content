@@ -19,12 +19,12 @@ ${SKILLS.content_youtube}
 ФОРМАТ ОТВЕТА: верни строго JSON без пояснений:
 {"posts": [{"angle": "краткое название ракурса поста (2-4 слова, для внутренней пометки)", "text": "текст поста, заканчивающийся строкой [ссылка на видео]"}]}`;
 
-export default jsonHandler(async (body) => {
+export default jsonHandler(async (body, usage) => {
   const { topic, script, synopsis, current, instruction, channelBio } = body;
 
   // Режим точечной правки одного поста.
   if (current && instruction) {
-    const text = await askClaude({
+    const text = await askClaude({ usage,
       system: SYSTEM,
       user: `${bioBlock(channelBio)}Текущий пост (ракурс «${current.angle}»):\n\n${current.text}\n\nПерепиши его с учётом правки: «${instruction}». Сохрани плейсхолдер [ссылка на видео] в конце. Верни JSON с одним элементом в "posts".`,
       maxTokens: 1500,
@@ -33,7 +33,7 @@ export default jsonHandler(async (body) => {
   }
 
   if (!topic && !script && !synopsis) throw new Error("Нет темы, пересказа или сценария главного ролика");
-  const text = await askClaude({
+  const text = await askClaude({ usage,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Тема Long-видео: ${topic || "—"}\n\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий (для деталей):\n${script ? script.slice(0, 6000) : "—"}\n\nНапиши 3 поста для «Записей» — анонсы этого Long-видео, каждый под своим ракурсом.`,
     maxTokens: 2500,

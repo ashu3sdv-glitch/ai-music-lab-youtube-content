@@ -1,5 +1,24 @@
 import { useEffect, useState } from "react";
 import { usePersistentState } from "./lib/storage.js";
+import { usageToday } from "./lib/api.js";
+
+// Бейдж расходов Claude в шапке: последний запрос + итог за сегодня.
+// Считает только текстовые генерации (Anthropic); картинки — счёт OpenAI.
+function CostBadge() {
+  const [usage, setUsage] = useState(() => ({ last: null, ...usageToday() }));
+  useEffect(() => {
+    const onUsage = (e) => setUsage({ last: e.detail.last, cost: e.detail.today, calls: e.detail.calls });
+    window.addEventListener("claude-usage", onUsage);
+    return () => window.removeEventListener("claude-usage", onUsage);
+  }, []);
+  if (!usage.calls) return null;
+  return (
+    <span className="muted small" title="Расход Claude API (тексты). Картинки считаются отдельно, на счету OpenAI.">
+      {usage.last != null && <>запрос ${usage.last.toFixed(3)} · </>}
+      сегодня ${usage.cost.toFixed(2)} ({usage.calls})
+    </span>
+  );
+}
 import LongTab from "./components/LongTab.jsx";
 import ShortsTab from "./components/ShortsTab.jsx";
 import ThumbnailsTab from "./components/ThumbnailsTab.jsx";
@@ -52,6 +71,7 @@ export default function App() {
     <div>
       <div className="top-row">
         <h1>AI Music Lab — YouTube Content</h1>
+        <CostBadge />
         <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
           {theme === "light" ? "🌙 Тёмная тема" : "☀️ Светлая тема"}
         </button>

@@ -22,10 +22,10 @@ const SYSTEM = `Ты помогаешь монтажёру обучающего 
    Вставка: [что вставить и почему это сработает]
    Искать: [поисковый запрос]`;
 
-export default jsonHandler(async (body) => {
+export default jsonHandler(async (body, usage) => {
   const { script, channelBio } = body;
   if (!script) throw new Error("Нет финального сценария");
-  const text = await askClaude({
+  const text = await askClaude({ usage,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Финальный сценарий видео:\n\n${script}\n\nПредложи идеи врезок (мемы, реакции, картинки) по этому сценарию.`,
     maxTokens: 3000,

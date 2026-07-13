@@ -54,7 +54,7 @@ const VARIANT_NOTE = {
   B: "Это ВАРИАНТ Б для A/Б-теста обложек на YouTube. Он должен СОДЕРЖАТЕЛЬНО отличаться от варианта A: другой текст заголовка, другая композиция/ракурс и другая цветовая гамма — но такая же плотная и конкретная по теме, не уходи в пустой атмосферный фон.",
 };
 
-export default jsonHandler(async (body) => {
+export default jsonHandler(async (body, usage) => {
   const { topic, aspect = "16:9", context, variant, channelBio, external } = body;
   if (!topic) throw new Error("Не указана тема для обложки");
   const trimmedContext = context ? context.slice(0, 6000) : "";
@@ -62,7 +62,7 @@ export default jsonHandler(async (body) => {
   const formatNotes = external ? EXTERNAL_FORMAT_NOTES : FORMAT_NOTES;
   const shortsNote =
     aspect === "9:16" ? `\n\n${external ? SHORTS_STYLE_NOTE_EXTERNAL : SHORTS_STYLE_NOTE}` : "";
-  const text = await askClaude({
+  const text = await askClaude({ usage,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Тема: ${topic}\n\nФормат: ${formatNotes[aspect] || aspect}${trimmedContext ? `\n\nКонтекст (сценарий/описание/пост — строй сцену из его конкретики):\n${trimmedContext}` : ""}${shortsNote}${variantNote}\n\nСгенерируй промпт обложки.`,
     maxTokens: 2000,

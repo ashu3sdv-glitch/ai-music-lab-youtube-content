@@ -21,13 +21,13 @@ ${SKILLS.youtube_hooks}
 {"hooks": [{"title": "короткое название варианта", "text": "полный текст хука (первые 5–30 секунд, дословно как произносить)", "type": "паттерн хука из скилла"}]}
 Дай 3 варианта хука, различающихся по паттерну.`;
 
-export default jsonHandler(async (body) => {
+export default jsonHandler(async (body, usage) => {
   const { topic, current, instruction, channelBio } = body;
 
   // Режим точечной правки одного хука: переписываем именно его по инструкции,
   // не трогая паттерн и удачные части, — а не генерируем три новых.
   if (current && instruction) {
-    const text = await askClaude({
+    const text = await askClaude({ usage,
       system: SYSTEM,
       user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic || "—"}\n\nТекущий хук (паттерн «${current.type || "—"}», название «${current.title || "—"}»):\n${current.text}\n\nПерепиши этот хук с учётом правки: «${instruction}». Это доработка понравившегося варианта: сохрани его паттерн, структуру и всё, чего правка не касается. Верни JSON с ОДНИМ элементом в "hooks".`,
       maxTokens: 1500,
@@ -45,7 +45,7 @@ export default jsonHandler(async (body) => {
           .map((h, i) => `${i + 1}. [${h.type || "—"}] ${h.text}`)
           .join("\n")}\n\nВыбери три ДРУГИХ паттерна из списка правил и найди в теме другие конкретные детали.`
       : "";
-  const text = await askClaude({
+  const text = await askClaude({ usage,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic}${previousBlock}\n\nСгенерируй 3 варианта хука.`,
     maxTokens: 3000,

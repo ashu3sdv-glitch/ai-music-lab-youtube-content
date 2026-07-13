@@ -59,7 +59,7 @@ CALLBACK НА ХУК: после шага 2 и в финале вернись к
 ФОРМАТ ОТВЕТА: верни строго JSON без пояснений:
 {"script": "полный текст сценария: начинается с выбранного хука, дальше по beat sheet; текст — то, что автор произносит на камеру, с пометками блоков в квадратных скобках, например [Блок: Демонстрация], и обязательными маркерами [Шаг 1: …], [Шаг 2: …], [Шаг 3: …] в обучающей части"}`;
 
-export default jsonHandler(async (body) => {
+export default jsonHandler(async (body, usage) => {
   const { topic, hook, currentScript, instruction, channelBio } = body;
 
   // Режим правки: переписать существующий сценарий по инструкции, не с нуля.
@@ -69,7 +69,7 @@ export default jsonHandler(async (body) => {
     const hookBlock = hook
       ? `\n\nАКТУАЛЬНЫЙ выбранный хук (сценарий ДОЛЖЕН начинаться именно с этого текста, дословно; если текущее начало сценария отличается — замени начало на этот хук и согласуй с ним первые фразы дальше):\n${hook}`
       : "";
-    const text = await askClaude({
+    const text = await askClaude({ usage,
       system: SYSTEM,
       user: `${bioBlock(channelBio)}Вот текущий сценарий видео (тема: ${topic || "—"}):\n\n${currentScript}${hookBlock}\n\nПерепиши сценарий с учётом правки: «${instruction}». Сохрани всё, чего правка и хук не касаются, — это доработка, а не новый сценарий. Маркеры [Шаг 1..3] сохрани.`,
     });
@@ -77,7 +77,7 @@ export default jsonHandler(async (body) => {
   }
 
   if (!topic || !hook) throw new Error("Нужны тема и выбранный хук");
-  const text = await askClaude({
+  const text = await askClaude({ usage,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic}\n\nВыбранный хук (сценарий должен начинаться именно с него):\n${hook}\n\nНапиши полный сценарий: хук + структура по beat sheet.`,
   });

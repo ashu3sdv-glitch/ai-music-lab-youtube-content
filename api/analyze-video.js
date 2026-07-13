@@ -1,5 +1,5 @@
 import { YoutubeTranscript } from "youtube-transcript";
-import { askClaude, extractJson, bioBlock } from "./_lib/claude.js";
+import { askClaude, extractJson, bioBlock, usageCost } from "./_lib/claude.js";
 
 // Анализатор YouTube-видео: ссылка → метаданные (YouTube Data API v3) +
 // транскрипт (внутренний timedtext API) → структурированный разбор от Claude.
@@ -129,7 +129,7 @@ async function checkVideo({ url }) {
   return { meta, hasTranscript: !!transcript };
 }
 
-async function analyze(body) {
+async function analyze(body, usage) {
   const { url, mode = "summary", channelBio, manualTranscript } = body;
   const system = SYSTEMS[mode] || SYSTEMS.summary;
   const manual = (manualTranscript || "").replace(/\s+/g, " ").trim();
@@ -163,6 +163,7 @@ async function analyze(body) {
     : "Транскрипт НЕДОСТУПЕН (у видео нет субтитров или YouTube отказал в выдаче) — анализируй только по метаданным и честно отрази это ограничение в note.";
 
   const text = await askClaude({
+    usage,
     system,
     user: `${bioBlock(channelBio)}${metaBlock}\n\n${transcriptBlock}\n\nСделай анализ.`,
     maxTokens: 5000,
@@ -218,7 +219,9 @@ export default async function handler(req, res) {
     }
   }, 5000);
   try {
-    const result = await analyze(body);
+    const usage = { input: 0, output: 0 };
+    const result = await analyze(body, usage);
+    if (usage.input > 0) result._usage = { ...usage, cost: usageCost(usage) };
     res.write(JSON.stringify(result));
   } catch (err) {
     console.error(err);

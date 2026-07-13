@@ -23,13 +23,13 @@ BOOSTY (2 поста): для самых тёплых подписчиков, к
 {"telegram": [{"angle": "тип поста, 2-3 слова", "text": "текст поста"}],
  "boosty": [{"angle": "тип поста", "title": "заголовок", "text": "текст поста"}]}`;
 
-export default jsonHandler(async (body) => {
+export default jsonHandler(async (body, usage) => {
   const { topic, script, synopsis, current, instruction, platform, channelBio } = body;
 
   // Режим точечной правки одного поста.
   if (current && instruction) {
     const isBoosty = platform === "boosty";
-    const text = await askClaude({
+    const text = await askClaude({ usage,
       system: SYSTEM,
       user: `${bioBlock(channelBio)}Текущий пост для ${isBoosty ? "Boosty" : "Telegram"} (тип «${current.angle || "—"}»):\n\n${isBoosty && current.title ? `Заголовок: ${current.title}\n` : ""}${current.text}\n\nПерепиши его с учётом правки: «${instruction}». Верни JSON, где в массиве "${isBoosty ? "boosty" : "telegram"}" ровно один переписанный пост, а второй массив пустой.`,
       maxTokens: 1500,
@@ -38,7 +38,7 @@ export default jsonHandler(async (body) => {
   }
 
   if (!topic && !script && !synopsis) throw new Error("Нет темы, пересказа или сценария главного ролика");
-  const text = await askClaude({
+  const text = await askClaude({ usage,
     system: SYSTEM,
     user: `${bioBlock(channelBio)}Тема Long-видео: ${topic || "—"}\n\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий (источник конкретных деталей):\n${script ? script.slice(0, 6000) : "—"}\n\nНапиши 3-4 поста для Telegram и 2 поста для Boosty.`,
     maxTokens: 4000,
