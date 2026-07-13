@@ -20,6 +20,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
   const data = { ...empty, ...state };
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [hookFix, setHookFix] = useState("");
   const [scriptFix, setScriptFix] = useState("");
   const [descFix, setDescFix] = useState("");
 
@@ -44,6 +45,23 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
       if (!data.topic.trim()) throw new Error("Введите тему ролика");
       const { hooks } = await callApi("generate-hooks", { topic: data.topic });
       patch({ hooks, selectedHookIndex: null, script: "", description: null, editingPlan: "" });
+    });
+
+  // Точечная правка выбранного хука: переписывается только он, два других
+  // варианта остаются как есть (полная перегенерация меняла бы всё).
+  const reworkHook = () =>
+    run("Переделываю выбранный хук…", async () => {
+      if (!hookFix.trim() || data.selectedHookIndex === null) return;
+      const { hooks } = await callApi("generate-hooks", {
+        topic: data.topic,
+        current: data.hooks[data.selectedHookIndex],
+        instruction: hookFix.trim(),
+      });
+      if (!hooks?.[0]) throw new Error("Не удалось переделать хук");
+      const next = data.hooks.slice();
+      next[data.selectedHookIndex] = hooks[0];
+      patch({ hooks: next });
+      setHookFix("");
     });
 
   const genScript = () =>
@@ -142,6 +160,17 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
                 </div>
               </div>
             ))}
+            {data.selectedHookIndex !== null && (
+              <div className="fix-row">
+                <input
+                  placeholder="Что поправить в выбранном хуке (например: убери цифру, начни с вопроса)"
+                  value={hookFix}
+                  onChange={(e) => setHookFix(e.target.value)}
+                  disabled={!!busy}
+                />
+                <button onClick={reworkHook} disabled={!!busy || !hookFix.trim()}>Переделать хук</button>
+              </div>
+            )}
             <button onClick={genScript} disabled={data.selectedHookIndex === null || !!busy}>
               Сгенерировать сценарий
             </button>
