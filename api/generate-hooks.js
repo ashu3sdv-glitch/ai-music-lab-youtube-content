@@ -36,9 +36,18 @@ export default jsonHandler(async (body) => {
   }
 
   if (!topic) throw new Error("Не указана тема ролика");
+  // Перегенерация: пользователь уже видел прошлые варианты и нажал кнопку,
+  // потому что хочет ДРУГИЕ — без этого блока модель на одинаковой теме
+  // стабильно сходится к тем же трём «лучшим» хукам.
+  const previousBlock =
+    Array.isArray(body.previous) && body.previous.length
+      ? `\n\nПрошлые варианты хуков — пользователь их уже видел и отклонил, поэтому запрещено повторять их паттерны, углы, конкретные детали и формулировки:\n${body.previous
+          .map((h, i) => `${i + 1}. [${h.type || "—"}] ${h.text}`)
+          .join("\n")}\n\nВыбери три ДРУГИХ паттерна из списка правил и найди в теме другие конкретные детали.`
+      : "";
   const text = await askClaude({
     system: SYSTEM,
-    user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic}\n\nСгенерируй 3 варианта хука.`,
+    user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic}${previousBlock}\n\nСгенерируй 3 варианта хука.`,
     maxTokens: 3000,
   });
   return extractJson(text);

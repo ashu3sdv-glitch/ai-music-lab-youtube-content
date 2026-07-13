@@ -43,7 +43,11 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
   const genHooks = () =>
     run("Генерирую хуки…", async () => {
       if (!data.topic.trim()) throw new Error("Введите тему ролика");
-      const { hooks } = await callApi("generate-hooks", { topic: data.topic });
+      const { hooks } = await callApi("generate-hooks", {
+        topic: data.topic,
+        // прошлые варианты — чтобы перегенерация давала другие углы, а не те же три
+        previous: data.hooks.length ? data.hooks : undefined,
+      });
       patch({ hooks, selectedHookIndex: null, script: "", description: null, editingPlan: "" });
     });
 
