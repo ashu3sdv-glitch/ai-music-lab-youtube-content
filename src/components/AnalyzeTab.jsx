@@ -46,7 +46,7 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
         manualTranscript: manual || undefined,
       });
       // meta может быть null — это законный режим «только текст, без ссылки»
-      if (!result?.analysis) {
+      if (!result?.analysis && !result?.digest) {
         throw new Error("Анализ не завершился — сервер вернул неполный ответ. Попробуйте ещё раз.");
       }
       patch({ result });
@@ -67,7 +67,7 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
   // до этой защиты) не рисуем вообще — раньше это роняло всё приложение в
   // белый экран при каждой загрузке страницы. meta может быть null (режим
   // «только текст») — обязателен лишь analysis.
-  const r = data.result?.analysis ? data.result : null;
+  const r = data.result?.analysis || data.result?.digest ? data.result : null;
   const a = r?.analysis;
   const isCompetitor = r && a && a.structure !== undefined;
 
@@ -160,6 +160,14 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
               />
               Разбор конкурента
             </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }} title="Дешёвая модель удаляет воду и отдаёт конспект. Для длинных видео: сначала выжимка, потом при желании — глубокий разбор по ней.">
+              <input
+                type="radio"
+                checked={data.mode === "digest"}
+                onChange={() => patch({ mode: "digest" })}
+              />
+              Выжимка (дёшево, для длинных)
+            </label>
           </div>
         </div>
         <details
@@ -226,7 +234,25 @@ export default function AnalyzeTab({ state, setState, ideas, setIdeas }) {
             </div>
           </div>
 
-          {isCompetitor ? (
+          {r.digest ? (
+            <div className="card">
+              <div className="card-head">
+                <strong>Выжимка без воды</strong>
+                <CopyButton text={() => r.digest} />
+              </div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{r.digest}</div>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button
+                  className="secondary"
+                  disabled={!!busy}
+                  onClick={() => patch({ manualTranscript: r.digest, mode: "summary", manualOpen: true })}
+                  title="Выжимка подставится в поле текста — нажми «Анализировать»: дорогая модель прочитает уже короткий текст"
+                >
+                  Разобрать выжимку глубоко (дёшево)
+                </button>
+              </div>
+            </div>
+          ) : isCompetitor ? (
             <>
               {textBlock("Хук (первые 15-30 секунд)", a.hook)}
               {listBlock("Структура ролика", a.structure)}
