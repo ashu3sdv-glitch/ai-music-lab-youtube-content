@@ -492,3 +492,54 @@ video, audio {
     flex-wrap: wrap;
   }
 }
+
+.topic-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.channel-input {
+  min-height: 110px;
+}
+
+.pain-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.pain-card {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 14px;
+}
+
+.pain-card p {
+  margin: 8px 0;
+}
+
+.pain-card details {
+  margin: 12px 0;
+  color: var(--link);
+  font-size: 13px;
+}
+
+.pain-evidence {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pain-evidence a {
+  color: var(--text);
+  text-decoration: none;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+
+.pain-evidence span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
