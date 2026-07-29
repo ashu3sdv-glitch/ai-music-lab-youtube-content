@@ -58,6 +58,18 @@ export function isPainQuery(query) {
   return PAIN_PATTERNS.some((pattern) => pattern.test(String(query || "")));
 }
 
+export function containsSeed(query, base) {
+  const normalize = (value) =>
+    String(value || "")
+      .toLocaleLowerCase("ru")
+      .replace(/ё/g, "е")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  const queryWords = new Set(normalize(query).split(/\s+/).filter(Boolean));
+  const seedWords = normalize(base).split(/\s+/).filter(Boolean);
+  return seedWords.length > 0 && seedWords.every((word) => queryWords.has(word));
+}
+
 export function buildSeeds(base) {
   const clean = base.trim();
   return [...new Set([
@@ -130,6 +142,7 @@ export function useTopicResearch({ initialResults = [], onResults }) {
   async function run({ base, limit, painOnly, manual }) {
     stopped.current = false;
     setError("");
+    const manualProvided = manual.trim().length > 0;
     let queries = manual.split("\n").map((line) => line.trim()).filter(Boolean);
 
     try {
@@ -154,6 +167,7 @@ export function useTopicResearch({ initialResults = [], onResults }) {
       }
 
       queries = [...new Set(queries)]
+        .filter((query) => manualProvided || containsSeed(query, base))
         .filter((query) => query.split(/\s+/).length >= 3)
         .filter((query) => !painOnly || isPainQuery(query))
         .slice(0, limit);
