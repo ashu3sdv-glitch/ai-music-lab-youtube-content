@@ -3,15 +3,22 @@ import TopicsTable from "./TopicsTable.jsx";
 import { useTopicResearch } from "./useTopicResearch.js";
 import AudienceResearch from "./AudienceResearch.jsx";
 
-export default function TopicsPanel({ state, setState, onUseTopic }) {
+export default function TopicsPanel({ state, setState, onUseTopic, onSaveTopics }) {
   const [base, setBase] = useState(state?.base || "suno");
   const [limit, setLimit] = useState(state?.limit || 30);
   const [painOnly, setPainOnly] = useState(state?.painOnly ?? true);
   const [manual, setManual] = useState("");
   const [mode, setMode] = useState("audience");
   const persistResults = useCallback(
-    (results) => setState((current) => ({ ...(current || {}), base, limit, painOnly, results })),
-    [setState, base, limit, painOnly]
+    (results) => {
+      setState((current) => ({ ...(current || {}), base, limit, painOnly, results }));
+      onSaveTopics?.(results, {
+        sourceType: "search",
+        sourceLabel: "Поисковый спрос",
+        researchLabel: base,
+      });
+    },
+    [setState, onSaveTopics, base, limit, painOnly]
   );
   const research = useTopicResearch({ initialResults: state?.results || [], onResults: persistResults });
   const running = research.status === "suggesting" || research.status === "analyzing";
@@ -27,7 +34,14 @@ export default function TopicsPanel({ state, setState, onUseTopic }) {
           Проверка поискового спроса
         </button>
       </div>
-      {mode === "audience" && <AudienceResearch state={state} setState={setState} onUseTopic={onUseTopic} />}
+      {mode === "audience" && (
+        <AudienceResearch
+          state={state}
+          setState={setState}
+          onUseTopic={onUseTopic}
+          onSaveTopics={onSaveTopics}
+        />
+      )}
       {mode === "search" && <>
       <div className="card">
         <div className="card-head">

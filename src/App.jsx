@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePersistentState } from "./lib/storage.js";
 import { usageToday } from "./lib/api.js";
 
@@ -27,6 +27,7 @@ import CommunityTab from "./components/CommunityTab.jsx";
 import SocialTab from "./components/SocialTab.jsx";
 import AnalyzeTab from "./components/AnalyzeTab.jsx";
 import IdeasTab from "./components/IdeasTab.jsx";
+import SavedTopicsTab from "./components/SavedTopicsTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
 import TopicsPanel from "./modules/Topics/TopicsPanel.jsx";
 
@@ -40,6 +41,7 @@ const TABS = [
   { id: "social", label: "Соцсети" },
   { id: "analyze", label: "Анализ видео" },
   { id: "ideas", label: "Идеи" },
+  { id: "saved-topics", label: "Сохранённые темы" },
   { id: "settings", label: "Настройки" },
 ];
 
@@ -65,6 +67,56 @@ export default function App() {
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
   const [ideas, setIdeas] = usePersistentState("ideas", []);
   const [topicsState, setTopicsState] = usePersistentState("topics", {});
+  const [savedTopics, setSavedTopics] = usePersistentState("saved-topics", []);
+
+  const saveFoundTopics = useCallback((items, context = {}) => {
+    if (!items?.length) return;
+    const savedAt = new Date().toISOString();
+    setSavedTopics((current) => {
+      const next = [...(current || [])];
+      for (const item of items) {
+        const query = item.query || item.suggestedTitle || item.topic;
+        if (!query) continue;
+        const sourceType = context.sourceType || "search";
+        const fingerprint = `${sourceType}:${query.toLocaleLowerCase("ru").trim()}`;
+        const existingIndex = next.findIndex((saved) => saved.fingerprint === fingerprint);
+        const saved = {
+          ...(existingIndex >= 0 ? next[existingIndex] : {}),
+          ...item,
+          id: existingIndex >= 0 ? next[existingIndex].id : crypto.randomUUID(),
+          fingerprint,
+          query,
+          savedAt,
+          sourceType,
+          sourceLabel: context.sourceLabel || "Поисковый спрос",
+          researchLabel: context.researchLabel || "",
+        };
+        if (existingIndex >= 0) next[existingIndex] = saved;
+        else next.push(saved);
+      }
+      return next.slice(-300);
+    });
+  }, [setSavedTopics]);
+
+  const useTopicInScript = useCallback((result) => {
+    setLongState((current) => ({
+      ...(current || {}),
+      topic: result.query,
+      hooks: [],
+      selectedHookIndex: null,
+      script: "",
+      description: null,
+      editingPlan: "",
+      topicResearch: {
+        topic: result.query,
+        score: result.score,
+        competitorTitles: (result.topVideos || []).slice(0, 5).map((video) => video.title),
+        medianViews: result.metrics?.medianViews || 0,
+        source: "topic-research",
+      },
+    }));
+    setTab("long");
+  }, [setLongState]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -120,25 +172,8 @@ export default function App() {
         <TopicsPanel
           state={topicsState}
           setState={setTopicsState}
-          onUseTopic={(result) => {
-            setLongState((current) => ({
-              ...(current || {}),
-              topic: result.query,
-              hooks: [],
-              selectedHookIndex: null,
-              script: "",
-              description: null,
-              editingPlan: "",
-              topicResearch: {
-                topic: result.query,
-                score: result.score,
-                competitorTitles: (result.topVideos || []).slice(0, 5).map((video) => video.title),
-                medianViews: result.metrics?.medianViews || 0,
-                source: "topic-research",
-              },
-            }));
-            setTab("long");
-          }}
+          onUseTopic={useTopicInScript}
+          onSaveTopics={saveFoundTopics}
         />
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>
@@ -168,6 +203,9 @@ export default function App() {
       </div>
       <div style={{ display: tab === "ideas" ? "block" : "none" }}>
         <IdeasTab ideas={ideas} setIdeas={setIdeas} />
+      </div>
+      <div style={{ display: tab === "saved-topics" ? "block" : "none" }}>
+        <SavedTopicsTab topics={savedTopics} setTopics={setSavedTopics} onUseTopic={useTopicInScript} />
       </div>
       <div style={{ display: tab === "settings" ? "block" : "none" }}>
         <SettingsTab links={links} setLinks={setLinks} settings={settings} setSettings={setSettings} />

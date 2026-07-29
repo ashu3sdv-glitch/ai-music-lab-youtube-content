@@ -610,3 +610,41 @@ video, audio {
   margin-top: 3px;
   text-decoration: none;
 }
+
+.saved-topics-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.saved-topics-grid,
+.saved-topics-empty {
+  display: grid;
+  gap: 12px;
+}
+
+.saved-topics-empty {
+  text-align: center;
+  padding: 36px 20px;
+}
+
+.saved-topic-card p {
+  margin: 10px 0;
+}
+
+.saved-topic-card > details {
+  margin-top: 12px;
+  color: var(--link);
+  font-size: 13px;
+}
+
+.saved-topic-actions {
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .saved-topics-controls {
+    grid-template-columns: 1fr;
+  }
+}
