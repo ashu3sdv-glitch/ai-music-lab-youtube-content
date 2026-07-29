@@ -569,16 +569,44 @@ video, audio {
   margin-top: 8px;
 }
 
-.pain-evidence a {
+.pain-evidence-item {
   color: var(--text);
-  text-decoration: none;
   border-left: 2px solid var(--border);
   padding-left: 8px;
 }
 
-.pain-evidence span {
+.pain-evidence strong {
+  display: block;
+  font-weight: 500;
+}
+
+.pain-evidence em {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.pain-evidence details {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pain-evidence details summary {
+  color: var(--link);
+}
+
+.pain-evidence details div {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.pain-evidence-item > a {
   display: block;
   color: var(--text-muted);
   font-size: 11px;
   margin-top: 3px;
+  text-decoration: none;
 }

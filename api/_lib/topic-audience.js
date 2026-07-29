@@ -93,16 +93,21 @@ export default async function audience(req, res) {
       usage,
       model: CHEAP_MODEL,
       maxTokens: 5000,
-      system: `Ты — исследователь аудитории YouTube-канала об AI-музыке. Найди в комментариях реальные повторяющиеся боли, вопросы, непонимание интерфейса и запросы на обучение. Игнорируй похвалу, спам, просьбы оценить песню и разговоры не по теме. Не выдумывай частотность. Английские боли переводи в естественные русские темы роликов. Верни строго JSON:
-{"topics":[{"topic":"конкретная тема ролика","pain":"что не получается у зрителя","commentIndexes":[0,1],"confidence":"high|medium","suggestedTitle":"поисковый заголовок без кликбейта"}]}`,
+      system: `Ты — исследователь аудитории YouTube-канала об AI-музыке. Найди в комментариях реальные повторяющиеся боли, вопросы, непонимание интерфейса и запросы на обучение. Игнорируй похвалу, спам, просьбы оценить песню и разговоры не по теме. Не выдумывай частотность. Английские боли переводи в естественные русские темы роликов. Для каждого commentIndexes верни точный по смыслу русский перевод в evidenceTranslations в том же порядке. Русские комментарии оставляй без изменений. Не добавляй пояснений от себя. Верни строго JSON:
+{"topics":[{"topic":"конкретная тема ролика","pain":"что не получается у зрителя","commentIndexes":[0,1],"evidenceTranslations":["русский перевод комментария 0","русский перевод комментария 1"],"confidence":"high|medium","suggestedTitle":"поисковый заголовок без кликбейта"}]}`,
       user: `Сгруппируй комментарии. Одна тема допустима только при наличии явного доказательства. Предпочитай боли, встретившиеся в нескольких комментариях или под сильными роликами.\n\n${compact}`,
     });
     const clustered = extractJson(text);
     const topics = (clustered.topics || []).slice(0, 15).map((topic) => {
       const items = (topic.commentIndexes || []).map((index) => evidence[index]).filter(Boolean).slice(0, 5);
+      const translations = Array.isArray(topic.evidenceTranslations) ? topic.evidenceTranslations : [];
       return {
         ...topic,
-        evidence: items,
+        evidence: items.map((item, index) => ({
+          ...item,
+          translatedText: translations[index] || item.text,
+          translatedFromEnglish: !/[А-Яа-яЁё]/.test(item.text),
+        })),
         mentions: items.length,
         score: topic.confidence === "high" ? 80 : 60,
       };
