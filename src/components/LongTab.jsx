@@ -11,6 +11,7 @@ const empty = {
   description: null,
   editingPlan: "",
   selectedLinkIds: [],
+  topicResearch: null,
 };
 
 // YouTube Long: тема → хуки → сценарий (+правка) → описание/tags (+правка) → план монтажа.
@@ -45,6 +46,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
       if (!data.topic.trim()) throw new Error("Введите тему ролика");
       const { hooks } = await callApi("generate-hooks", {
         topic: data.topic,
+        topicResearch: data.topicResearch,
         // прошлые варианты — чтобы перегенерация давала другие углы, а не те же три
         previous: data.hooks.length ? data.hooks : undefined,
       });
@@ -60,6 +62,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         topic: data.topic,
         current: data.hooks[data.selectedHookIndex],
         instruction: hookFix.trim(),
+        topicResearch: data.topicResearch,
       });
       if (!hooks?.[0]) throw new Error("Не удалось переделать хук");
       const next = data.hooks.slice();
@@ -71,7 +74,11 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
   const genScript = () =>
     run("Генерирую сценарий…", async () => {
       const hook = data.hooks[data.selectedHookIndex];
-      const { script } = await callApi("generate-script", { topic: data.topic, hook: hook.text });
+      const { script } = await callApi("generate-script", {
+        topic: data.topic,
+        hook: hook.text,
+        topicResearch: data.topicResearch,
+      });
       patch({ script, description: null, editingPlan: "" });
     });
 
@@ -85,6 +92,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         // актуальный выбранный хук: если его точечно переделали после генерации
         // сценария, правка сценария обязана подтянуть новое начало
         hook: data.hooks[data.selectedHookIndex]?.text,
+        topicResearch: data.topicResearch,
       });
       patch({ script });
       setScriptFix("");
@@ -94,7 +102,12 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
     run("Генерирую описание…", async () => {
       if (!data.script.trim()) throw new Error("Сначала нужен финальный сценарий");
       const selectedLinks = links.filter((l) => data.selectedLinkIds.includes(l.id));
-      const desc = await callApi("generate-description", { topic: data.topic, script: data.script, links: selectedLinks });
+      const desc = await callApi("generate-description", {
+        topic: data.topic,
+        script: data.script,
+        links: selectedLinks,
+        topicResearch: data.topicResearch,
+      });
       patch({ description: desc });
     });
 
@@ -107,6 +120,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         current: data.description,
         instruction: descFix.trim(),
         links: selectedLinks,
+        topicResearch: data.topicResearch,
       });
       patch({ description: desc });
       setDescFix("");
@@ -148,8 +162,20 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         <div className="card-head"><strong>1. Тема и хук</strong></div>
         <div className="field">
           <label>Тема ролика</label>
-          <input value={data.topic} onChange={(e) => patch({ topic: e.target.value })} placeholder="О чём видео" />
+          <input
+            value={data.topic}
+            onChange={(e) => patch({ topic: e.target.value, topicResearch: null })}
+            placeholder="О чём видео"
+          />
         </div>
+        {data.topicResearch?.source === "topic-research" && (
+          <div className="research-context">
+            <strong>Тема из поискового спроса · скор {data.topicResearch.score}</strong>
+            <span className="muted small">
+              Формулировка запроса и заголовки конкурентов будут учтены при генерации.
+            </span>
+          </div>
+        )}
         <button onClick={genHooks} disabled={!!busy}>Сгенерировать хуки</button>
 
         {data.hooks.length > 0 && (

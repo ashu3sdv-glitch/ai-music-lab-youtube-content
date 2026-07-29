@@ -28,8 +28,10 @@ import SocialTab from "./components/SocialTab.jsx";
 import AnalyzeTab from "./components/AnalyzeTab.jsx";
 import IdeasTab from "./components/IdeasTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
+import TopicsPanel from "./modules/Topics/TopicsPanel.jsx";
 
 const TABS = [
+  { id: "topics", label: "Темы" },
   { id: "long", label: "YouTube Long" },
   { id: "shorts", label: "Shorts" },
   { id: "thumbnails", label: "Обложки" },
@@ -62,6 +64,7 @@ export default function App() {
   const [socialState, setSocialState] = usePersistentState("social", {});
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
   const [ideas, setIdeas] = usePersistentState("ideas", []);
+  const [topicsState, setTopicsState] = usePersistentState("topics", {});
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -111,6 +114,31 @@ export default function App() {
           onSocialReady={({ telegram, boosty }) =>
             setSocialState({ telegram: telegram || [], boosty: boosty || [] })
           }
+        />
+      </div>
+      <div style={{ display: tab === "topics" ? "block" : "none" }}>
+        <TopicsPanel
+          state={topicsState}
+          setState={setTopicsState}
+          onUseTopic={(result) => {
+            setLongState((current) => ({
+              ...(current || {}),
+              topic: result.query,
+              hooks: [],
+              selectedHookIndex: null,
+              script: "",
+              description: null,
+              editingPlan: "",
+              topicResearch: {
+                topic: result.query,
+                score: result.score,
+                competitorTitles: (result.topVideos || []).slice(0, 5).map((video) => video.title),
+                medianViews: result.metrics?.medianViews || 0,
+                source: "topic-research",
+              },
+            }));
+            setTab("long");
+          }}
         />
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>
