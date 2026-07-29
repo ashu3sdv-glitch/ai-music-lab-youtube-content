@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function AudienceResearch({ state, setState, onUseTopic }) {
+export default function AudienceResearch({ state, setState, onUseTopic, onSaveTopics }) {
   const [channels, setChannels] = useState(state?.audienceChannels || "");
   const [discoverQuery, setDiscoverQuery] = useState(state?.discoverQuery || "Suno создание музыки");
   const [candidates, setCandidates] = useState([]);
@@ -10,6 +10,15 @@ export default function AudienceResearch({ state, setState, onUseTopic }) {
   const [error, setError] = useState("");
   const topics = state?.audienceTopics || [];
   const meta = state?.audienceMeta;
+
+  useEffect(() => {
+    if (!topics.length) return;
+    onSaveTopics?.(topics, {
+      sourceType: "audience",
+      sourceLabel: "Комментарии аудитории",
+      researchLabel: (meta?.channels || []).map((channel) => channel.title).join(", "),
+    });
+  }, [topics, meta?.channels, onSaveTopics]);
 
   async function discover() {
     setDiscovering(true);
