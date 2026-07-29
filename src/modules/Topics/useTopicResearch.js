@@ -6,12 +6,31 @@ const MODIFIERS = [
   "бесплатно", "ошибка", "проблема", "настройка", "на русском",
 ];
 const ALPHABET = "абвгдежзиклмнопрстуфхцчшэюя".split("");
-const PAIN = /\b(не|почему|ошибк\p{L}*|проблем\p{L}*|обрыва\p{L}*|не работает)\b/iu;
+const PAIN_PATTERNS = [
+  /(?:^|\s)не(?:\s|$)/iu,
+  /(?:^|\s)почему(?:\s|$)/iu,
+  /ошиб/iu,
+  /проблем/iu,
+  /обрыв/iu,
+  /обрыва/iu,
+  /не\s+работает/iu,
+  /не\s+генерирует/iu,
+  /не\s+получается/iu,
+  /не\s+могу/iu,
+  /перестал/iu,
+  /завис/iu,
+  /как\s+исправить/iu,
+  /что\s+делать/iu,
+];
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const DAILY_LIMIT = 10000;
 const COST_PER_QUERY = 102;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function isPainQuery(query) {
+  return PAIN_PATTERNS.some((pattern) => pattern.test(String(query || "")));
+}
 
 export function buildSeeds(base) {
   const clean = base.trim();
@@ -109,7 +128,7 @@ export function useTopicResearch({ initialResults = [], onResults }) {
 
       queries = [...new Set(queries)]
         .filter((query) => query.split(/\s+/).length >= 3)
-        .filter((query) => !painOnly || PAIN.test(query))
+        .filter((query) => !painOnly || isPainQuery(query))
         .slice(0, limit);
       if (!queries.length) throw new Error("Подходящих фраз не найдено. Добавьте их вручную или отключите фильтр боли.");
 
