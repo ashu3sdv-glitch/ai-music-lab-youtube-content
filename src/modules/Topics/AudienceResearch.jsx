@@ -166,15 +166,23 @@ export default function AudienceResearch({ state, setState, onUseTopic }) {
                   <summary>Доказательства из комментариев ({item.mentions})</summary>
                   <div className="pain-evidence">
                     {(item.evidence || []).map((evidence, evidenceIndex) => (
-                      <a
-                        key={`${evidence.videoId}-${evidenceIndex}`}
-                        href={`https://youtube.com/watch?v=${evidence.videoId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        «{evidence.text}»
-                        <span>{evidence.channelTitle} · {evidence.videoTitle}</span>
-                      </a>
+                      <div className="pain-evidence-item" key={`${evidence.videoId}-${evidenceIndex}`}>
+                        <strong>«{evidence.translatedText || evidence.text}»</strong>
+                        {evidence.translatedFromEnglish && <em>Переведено с английского</em>}
+                        {evidence.translatedFromEnglish && (
+                          <details>
+                            <summary>Показать оригинал</summary>
+                            <div>«{evidence.text}»</div>
+                          </details>
+                        )}
+                        <a
+                          href={`https://youtube.com/watch?v=${evidence.videoId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {evidence.channelTitle} · {evidence.videoTitle}
+                        </a>
+                      </div>
                     ))}
                   </div>
                 </details>
