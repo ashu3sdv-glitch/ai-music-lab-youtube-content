@@ -503,6 +503,45 @@ video, audio {
   min-height: 110px;
 }
 
+.channel-discovery {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.channel-candidates {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.channel-candidate {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.channel-candidate:last-child {
+  border-bottom: 0;
+}
+
+.channel-candidate > span {
+  display: grid;
+  gap: 3px;
+}
+
+@media (max-width: 640px) {
+  .channel-discovery {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pain-grid {
   display: grid;
   gap: 12px;
