@@ -1,12 +1,14 @@
 import { useCallback, useState } from "react";
 import TopicsTable from "./TopicsTable.jsx";
 import { useTopicResearch } from "./useTopicResearch.js";
+import AudienceResearch from "./AudienceResearch.jsx";
 
 export default function TopicsPanel({ state, setState, onUseTopic }) {
   const [base, setBase] = useState(state?.base || "suno");
   const [limit, setLimit] = useState(state?.limit || 30);
   const [painOnly, setPainOnly] = useState(state?.painOnly ?? true);
   const [manual, setManual] = useState("");
+  const [mode, setMode] = useState("audience");
   const persistResults = useCallback(
     (results) => setState((current) => ({ ...(current || {}), base, limit, painOnly, results })),
     [setState, base, limit, painOnly]
@@ -17,6 +19,16 @@ export default function TopicsPanel({ state, setState, onUseTopic }) {
 
   return (
     <div>
+      <div className="topic-mode-tabs">
+        <button className={mode === "audience" ? "" : "secondary"} onClick={() => setMode("audience")}>
+          Боли из комментариев
+        </button>
+        <button className={mode === "search" ? "" : "secondary"} onClick={() => setMode("search")}>
+          Проверка поискового спроса
+        </button>
+      </div>
+      {mode === "audience" && <AudienceResearch state={state} setState={setState} onUseTopic={onUseTopic} />}
+      {mode === "search" && <>
       <div className="card">
         <div className="card-head">
           <div>
@@ -85,6 +97,7 @@ export default function TopicsPanel({ state, setState, onUseTopic }) {
       </div>
 
       {research.results.length > 0 && <TopicsTable rows={research.results} onUse={onUseTopic} />}
+      </>}
     </div>
   );
 }
