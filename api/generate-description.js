@@ -31,8 +31,17 @@ ${SKILLS.content_youtube}
 ФОРМАТ ОТВЕТА: верни строго JSON без пояснений:
 {"title": "заголовок видео — вариант A", "titleB": "заголовок видео — вариант Б, другой угол подачи", "description": "полный текст описания с блоком ссылок (если есть), Keywords и хэштегами", "tags": "теги видео через запятую, суммарно до 500 символов (это поле метаданных YouTube, не блок Keywords)", "synopsis": "краткий пересказ сути ролика, 2-3 предложения"}`;
 
+function researchBlock(research) {
+  if (research?.source !== "topic-research") return "";
+  return `Тема выбрана по поисковому спросу. Запрос: "${research.topic}".
+Заголовки конкурентов в топе: ${(research.competitorTitles || []).join(" | ") || "—"}.
+ОБЯЗАТЕЛЬНО: оба заголовка должны содержать формулировку запроса или её близкий естественный вариант, сохраняя поисковый интент.
+
+`;
+}
+
 export default jsonHandler(async (body, usage) => {
-  const { topic, script, links, current, instruction, channelBio } = body;
+  const { topic, script, links, current, instruction, channelBio, topicResearch } = body;
 
   const linksBlock =
     Array.isArray(links) && links.length
@@ -45,7 +54,7 @@ export default jsonHandler(async (body, usage) => {
   if (current && instruction) {
     const text = await askClaude({ usage,
       system: SYSTEM,
-      user: `${bioBlock(channelBio)}Текущие метаданные видео (тема: ${topic || "—"}):\n\nЗаголовок A: ${current.title}\n\nЗаголовок Б: ${current.titleB || "—"}\n\nОписание:\n${current.description}\n\nTags: ${current.tags}\n\nSynopsis: ${current.synopsis || "—"}\n\nПерепиши их с учётом правки: «${instruction}». Меняй только то, чего касается правка (synopsis и titleB меняй только если правка явно их касается — иначе верни как есть).${linksBlock}`,
+      user: `${bioBlock(channelBio)}${researchBlock(topicResearch)}Текущие метаданные видео (тема: ${topic || "—"}):\n\nЗаголовок A: ${current.title}\n\nЗаголовок Б: ${current.titleB || "—"}\n\nОписание:\n${current.description}\n\nTags: ${current.tags}\n\nSynopsis: ${current.synopsis || "—"}\n\nПерепиши их с учётом правки: «${instruction}». Меняй только то, чего касается правка (synopsis и titleB меняй только если правка явно их касается — иначе верни как есть).${linksBlock}`,
       maxTokens: 4000,
     });
     return extractJson(text);
@@ -54,7 +63,7 @@ export default jsonHandler(async (body, usage) => {
   if (!script) throw new Error("Нет финального текста сценария");
   const text = await askClaude({ usage,
     system: SYSTEM,
-    user: `${bioBlock(channelBio)}Тема видео: ${topic || "—"}\n\nФинальный сценарий видео:\n\n${script}${linksBlock}\n\nСгенерируй title, titleB, описание, tags и synopsis.`,
+    user: `${bioBlock(channelBio)}${researchBlock(topicResearch)}Тема видео: ${topic || "—"}\n\nФинальный сценарий видео:\n\n${script}${linksBlock}\n\nСгенерируй title, titleB, описание, tags и synopsis.`,
     maxTokens: 4000,
   });
   return extractJson(text);

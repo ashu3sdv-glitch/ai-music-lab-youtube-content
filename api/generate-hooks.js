@@ -21,15 +21,26 @@ ${SKILLS.youtube_hooks}
 {"hooks": [{"title": "короткое название варианта", "text": "полный текст хука (первые 5–30 секунд, дословно как произносить)", "type": "паттерн хука из скилла"}]}
 Дай 3 варианта хука, различающихся по паттерну.`;
 
+function researchBlock(research) {
+  if (research?.source !== "topic-research") return "";
+  const titles = Array.isArray(research.competitorTitles) ? research.competitorTitles : [];
+  return `Тема выбрана по поисковому спросу. Запрос: "${research.topic}".
+Заголовки конкурентов в топе:
+${titles.map((title) => `- ${title}`).join("\n") || "—"}
+Хук должен использовать формулировку запроса или её близкий естественный вариант.
+
+`;
+}
+
 export default jsonHandler(async (body, usage) => {
-  const { topic, current, instruction, channelBio } = body;
+  const { topic, current, instruction, channelBio, topicResearch } = body;
 
   // Режим точечной правки одного хука: переписываем именно его по инструкции,
   // не трогая паттерн и удачные части, — а не генерируем три новых.
   if (current && instruction) {
     const text = await askClaude({ usage,
       system: SYSTEM,
-      user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic || "—"}\n\nТекущий хук (паттерн «${current.type || "—"}», название «${current.title || "—"}»):\n${current.text}\n\nПерепиши этот хук с учётом правки: «${instruction}». Это доработка понравившегося варианта: сохрани его паттерн, структуру и всё, чего правка не касается. Верни JSON с ОДНИМ элементом в "hooks".`,
+      user: `${bioBlock(channelBio)}${researchBlock(topicResearch)}Тема видео (YouTube Long): ${topic || "—"}\n\nТекущий хук (паттерн «${current.type || "—"}», название «${current.title || "—"}»):\n${current.text}\n\nПерепиши этот хук с учётом правки: «${instruction}». Это доработка понравившегося варианта: сохрани его паттерн, структуру и всё, чего правка не касается. Верни JSON с ОДНИМ элементом в "hooks".`,
       maxTokens: 1500,
     });
     return extractJson(text);
@@ -47,7 +58,7 @@ export default jsonHandler(async (body, usage) => {
       : "";
   const text = await askClaude({ usage,
     system: SYSTEM,
-    user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic}${previousBlock}\n\nСгенерируй 3 варианта хука.`,
+    user: `${bioBlock(channelBio)}${researchBlock(topicResearch)}Тема видео (YouTube Long): ${topic}${previousBlock}\n\nСгенерируй 3 варианта хука.`,
     maxTokens: 3000,
   });
   return extractJson(text);

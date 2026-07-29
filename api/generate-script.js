@@ -59,8 +59,17 @@ CALLBACK НА ХУК: после шага 2 и в финале вернись к
 ФОРМАТ ОТВЕТА: верни строго JSON без пояснений:
 {"script": "полный текст сценария: начинается с выбранного хука, дальше по beat sheet; текст — то, что автор произносит на камеру, с пометками блоков в квадратных скобках, например [Блок: Демонстрация], и обязательными маркерами [Шаг 1: …], [Шаг 2: …], [Шаг 3: …] в обучающей части"}`;
 
+function researchBlock(research) {
+  if (research?.source !== "topic-research") return "";
+  return `Тема выбрана по поисковому спросу. Запрос: "${research.topic}".
+Заголовки конкурентов в топе: ${(research.competitorTitles || []).join(" | ") || "—"}.
+Сохрани поисковый интент запроса и не подменяй проблему более общей темой.
+
+`;
+}
+
 export default jsonHandler(async (body, usage) => {
-  const { topic, hook, currentScript, instruction, channelBio } = body;
+  const { topic, hook, currentScript, instruction, channelBio, topicResearch } = body;
 
   // Режим правки: переписать существующий сценарий по инструкции, не с нуля.
   // Хук передаётся всегда: пользователь мог точечно переделать его после
@@ -71,7 +80,7 @@ export default jsonHandler(async (body, usage) => {
       : "";
     const text = await askClaude({ usage,
       system: SYSTEM,
-      user: `${bioBlock(channelBio)}Вот текущий сценарий видео (тема: ${topic || "—"}):\n\n${currentScript}${hookBlock}\n\nПерепиши сценарий с учётом правки: «${instruction}». Сохрани всё, чего правка и хук не касаются, — это доработка, а не новый сценарий. Маркеры [Шаг 1..3] сохрани.`,
+      user: `${bioBlock(channelBio)}${researchBlock(topicResearch)}Вот текущий сценарий видео (тема: ${topic || "—"}):\n\n${currentScript}${hookBlock}\n\nПерепиши сценарий с учётом правки: «${instruction}». Сохрани всё, чего правка и хук не касаются, — это доработка, а не новый сценарий. Маркеры [Шаг 1..3] сохрани.`,
     });
     return extractJson(text);
   }
@@ -79,7 +88,7 @@ export default jsonHandler(async (body, usage) => {
   if (!topic || !hook) throw new Error("Нужны тема и выбранный хук");
   const text = await askClaude({ usage,
     system: SYSTEM,
-    user: `${bioBlock(channelBio)}Тема видео (YouTube Long): ${topic}\n\nВыбранный хук (сценарий должен начинаться именно с него):\n${hook}\n\nНапиши полный сценарий: хук + структура по beat sheet.`,
+    user: `${bioBlock(channelBio)}${researchBlock(topicResearch)}Тема видео (YouTube Long): ${topic}\n\nВыбранный хук (сценарий должен начинаться именно с него):\n${hook}\n\nНапиши полный сценарий: хук + структура по beat sheet.`,
   });
   return extractJson(text);
 });
