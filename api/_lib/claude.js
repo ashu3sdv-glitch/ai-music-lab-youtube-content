@@ -67,6 +67,30 @@ export function extractJson(text) {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
+// Получает JSON от Claude и автоматически чинит единичные синтаксические
+// ошибки в длинном ответе. Повторный запрос выполняется только если обычный
+// JSON.parse не сработал, поэтому штатные генерации не становятся дороже.
+export async function askClaudeJson(options) {
+  const text = await askClaude(options);
+  try {
+    return extractJson(text);
+  } catch (parseError) {
+    console.warn("Claude вернул повреждённый JSON, запускаю восстановление:", parseError.message);
+    const repaired = await askClaude({
+      usage: options.usage,
+      model: options.model,
+      maxTokens: options.maxTokens,
+      system: `Ты восстанавливаешь повреждённый JSON. Исправь только синтаксис: запятые, кавычки, скобки и оборванные элементы. Не добавляй новые факты и не меняй смысл. Верни только один валидный JSON-объект без Markdown и пояснений.`,
+      user: `Исправь этот ответ и верни валидный JSON:\n\n${text}`,
+    });
+    try {
+      return extractJson(repaired);
+    } catch {
+      throw new Error("Нейросеть вернула повреждённый ответ. Нажмите «Найти боли аудитории» ещё раз.");
+    }
+  }
+}
+
 // Общая обвязка HTTP-обработчика: только POST, JSON-ответ, ошибки в JSON.
 // Вторым аргументом fn получает коллектор usage — если endpoint передал его
 // в askClaude, в ответ добавляется _usage (токены и стоимость вызова).
