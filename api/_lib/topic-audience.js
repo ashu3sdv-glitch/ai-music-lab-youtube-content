@@ -1,4 +1,4 @@
-import { askClaude, CHEAP_MODEL, extractJson } from "./claude.js";
+import { askClaudeJson, CHEAP_MODEL } from "./claude.js";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
@@ -89,7 +89,7 @@ export default async function audience(req, res) {
     const compact = evidence.slice(0, 500).map((item, index) =>
       `[${index}] ${item.text} (лайков: ${item.likes}; ролик: ${item.videoTitle})`
     ).join("\n");
-    const text = await askClaude({
+    const clustered = await askClaudeJson({
       usage,
       model: CHEAP_MODEL,
       maxTokens: 5000,
@@ -97,7 +97,6 @@ export default async function audience(req, res) {
 {"topics":[{"topic":"конкретная тема ролика","pain":"что не получается у зрителя","commentIndexes":[0,1],"evidenceTranslations":["русский перевод комментария 0","русский перевод комментария 1"],"confidence":"high|medium","suggestedTitle":"поисковый заголовок без кликбейта"}]}`,
       user: `Сгруппируй комментарии. Одна тема допустима только при наличии явного доказательства. Предпочитай боли, встретившиеся в нескольких комментариях или под сильными роликами.\n\n${compact}`,
     });
-    const clustered = extractJson(text);
     const topics = (clustered.topics || []).slice(0, 15).map((topic) => {
       const items = (topic.commentIndexes || []).map((index) => evidence[index]).filter(Boolean).slice(0, 5);
       const translations = Array.isArray(topic.evidenceTranslations) ? topic.evidenceTranslations : [];
