@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { usePersistentState } from "./lib/storage.js";
+import { useLargePersistentState, usePersistentState } from "./lib/storage.js";
 import { usageToday } from "./lib/api.js";
 
 // Бейдж расходов Claude в шапке: последний запрос + итог за сегодня.
@@ -66,8 +66,8 @@ export default function App() {
   const [socialState, setSocialState] = usePersistentState("social", {});
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
   const [ideas, setIdeas] = usePersistentState("ideas", []);
-  const [topicsState, setTopicsState] = usePersistentState("topics", {});
-  const [savedTopics, setSavedTopics] = usePersistentState("saved-topics", []);
+  const [topicsState, setTopicsState] = useLargePersistentState("topics", {});
+  const [savedTopics, setSavedTopics] = useLargePersistentState("saved-topics", []);
 
   const saveFoundTopics = useCallback((items, context = {}) => {
     if (!items?.length) return;
