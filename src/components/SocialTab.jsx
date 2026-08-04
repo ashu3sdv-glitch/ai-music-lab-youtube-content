@@ -4,7 +4,7 @@ import CopyButton from "./CopyButton.jsx";
 
 const emptyState = { telegram: [], boosty: [] };
 
-// Соцсети: 3-4 поста для Telegram и 2 для Boosty из сценария Long-видео.
+// Соцсети: 4 поста для Telegram и 2 для Boosty из сценария Long-видео.
 // Картинки не генерируются сознательно: Telegram живёт текстом/кружками/скринами,
 // для Boosty при желании переиспользуется готовая YouTube-обложка.
 export default function SocialTab({ state, setState, longState }) {
@@ -84,7 +84,7 @@ export default function SocialTab({ state, setState, longState }) {
       <div className="card">
         <div className="card-head"><strong>Telegram + Boosty</strong></div>
         <div className="muted small" style={{ marginBottom: 10 }}>
-          Из сценария Long-видео: 3-4 поста для Telegram (анонс, закулисье, микро-польза, вопрос)
+          Из сценария Long-видео: 4 поста для Telegram (анонс, закулисье, микро-польза, вопрос)
           и 2 для Boosty (за кулисами, бонус). Картинки не нужны: Telegram живёт текстом,
           для Boosty можно переиспользовать готовую YouTube-обложку из вкладки «Обложки».
         </div>
