@@ -1,7 +1,7 @@
 export async function telegramRequest(payload) {
-  const res = await fetch("/api/telegram", {
+  const res = await fetch("/api/openai-proxy", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Proxy-Service": "telegram" },
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));

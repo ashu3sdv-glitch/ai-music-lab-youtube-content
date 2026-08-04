@@ -16,7 +16,66 @@
 // 300 сек) — export const maxDuration в самом файле работает только для
 // Next.js и в обычном проекте (наш случай) молча игнорируется.
 
+const TELEGRAM_BASE = "https://api.telegram.org";
+
+async function telegram(botToken, method, options = {}) {
+  const response = await fetch(`${TELEGRAM_BASE}/bot${botToken}/${method}`, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.description || `Telegram API: ошибка ${response.status}`);
+  return data.result;
+}
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
+
+async function handleTelegram(request) {
+  const { action, botToken, chatId, text, image, buttonUrl, buttonText } = await request.json();
+  if (!botToken) return jsonResponse({ ok: false, error: "Не указан токен Telegram-бота" }, 400);
+  try {
+    if (action === "test") {
+      const bot = await telegram(botToken, "getMe");
+      return jsonResponse({ ok: true, bot: { id: bot.id, username: bot.username, name: bot.first_name } });
+    }
+    if (action !== "send") return jsonResponse({ ok: false, error: "Неизвестное действие" }, 400);
+    if (!chatId || !text) return jsonResponse({ ok: false, error: "Нужны ID канала и текст поста" }, 400);
+
+    const replyMarkup = buttonUrl
+      ? JSON.stringify({ inline_keyboard: [[{ text: buttonText || "Смотреть видео", url: buttonUrl }]] })
+      : undefined;
+    let result;
+    if (image?.startsWith("data:image/")) {
+      const match = image.match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
+      if (!match) throw new Error("Некорректный формат картинки");
+      const bytes = Uint8Array.from(atob(match[2]), (char) => char.charCodeAt(0));
+      const form = new FormData();
+      form.append("chat_id", String(chatId));
+      form.append("caption", text.slice(0, 1024));
+      form.append("photo", new Blob([bytes], { type: match[1] }), "post.jpg");
+      if (replyMarkup) form.append("reply_markup", replyMarkup);
+      result = await telegram(botToken, "sendPhoto", { method: "POST", body: form });
+      if (text.length > 1024) {
+        result = await telegram(botToken, "sendMessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: text.slice(1024) }),
+        });
+      }
+    } else {
+      result = await telegram(botToken, "sendMessage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, reply_markup: replyMarkup ? JSON.parse(replyMarkup) : undefined }),
+      });
+    }
+    return jsonResponse({ ok: true, messageId: result.message_id });
+  } catch (error) {
+    return jsonResponse({ ok: false, error: error.message || "Не удалось обратиться к Telegram" }, 502);
+  }
+}
+
 export async function POST(request) {
+  if (request.headers.get("x-proxy-service") === "telegram") return handleTelegram(request);
   const path = request.headers.get("x-openai-path");
   const apiKey = request.headers.get("x-openai-key");
   if (!path || !apiKey) {
