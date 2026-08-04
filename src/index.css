@@ -418,6 +418,55 @@ video, audio {
   cursor: pointer;
 }
 
+.week-controls,
+.week-item-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.week-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.week-images img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.week-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.week-item {
+  margin-bottom: 0;
+}
+
+.week-item textarea {
+  min-height: 150px;
+  margin-top: 8px;
+}
+
+.status {
+  font-size: 11px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--code-bg);
+}
+
+.status-published { color: #29a36a; }
+.status-error { color: var(--error); }
+.status-scheduled { color: var(--link); }
+
 .topic-row:hover {
   background: rgba(77, 124, 254, 0.06);
 }

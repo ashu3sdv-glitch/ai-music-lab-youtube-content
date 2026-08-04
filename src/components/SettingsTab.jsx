@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePersistentState } from "../lib/storage.js";
+import { testTelegram } from "../lib/telegram.js";
 
 // Раздел «Настройки»: библиотека ссылок (гайды, Boosty и т.д.), "о канале",
 // OpenAI-ключ и параметры цикла само-оценки обложек. Всё хранится в localStorage.
@@ -7,6 +8,18 @@ export default function SettingsTab({ links, setLinks, settings, setSettings }) 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [channelBio, setChannelBio] = usePersistentState("channelBio", "");
+  const [telegramStatus, setTelegramStatus] = useState("");
+
+  async function checkTelegram() {
+    if (!settings.telegramBotToken) return setTelegramStatus("Введите токен бота");
+    setTelegramStatus("Проверяю…");
+    try {
+      const result = await testTelegram(settings.telegramBotToken);
+      setTelegramStatus(`Подключён бот @${result.bot.username || result.bot.name}`);
+    } catch (error) {
+      setTelegramStatus(error.message);
+    }
+  }
 
   function addLink() {
     if (!name.trim() || !url.trim()) return;
@@ -55,6 +68,33 @@ export default function SettingsTab({ links, setLinks, settings, setSettings }) 
           <input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
           <button onClick={addLink}>Добавить</button>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head"><strong>Telegram-канал</strong></div>
+        <div className="muted small" style={{ marginBottom: 10 }}>
+          Добавьте бота администратором канала с правом публикации. Токен хранится только в этом браузере и передаётся серверу на время отправки.
+        </div>
+        <div className="field">
+          <label>Токен бота от @BotFather</label>
+          <input
+            type="password"
+            placeholder="123456:ABC..."
+            value={settings.telegramBotToken || ""}
+            onChange={(e) => setSettings({ ...settings, telegramBotToken: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label>ID или username канала</label>
+          <input
+            type="text"
+            placeholder="@my_channel или -100..."
+            value={settings.telegramChatId || ""}
+            onChange={(e) => setSettings({ ...settings, telegramChatId: e.target.value })}
+          />
+        </div>
+        <button onClick={checkTelegram}>Проверить бота</button>
+        {telegramStatus && <div className="muted small" style={{ marginTop: 8 }}>{telegramStatus}</div>}
       </div>
 
       <div className="card">

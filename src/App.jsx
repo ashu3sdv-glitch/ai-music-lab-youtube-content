@@ -30,9 +30,11 @@ import IdeasTab from "./components/IdeasTab.jsx";
 import SavedTopicsTab from "./components/SavedTopicsTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
 import TopicsPanel from "./modules/Topics/TopicsPanel.jsx";
+import WeekPlanTab from "./components/WeekPlanTab.jsx";
 
 const TABS = [
   { id: "topics", label: "Темы" },
+  { id: "week", label: "План недели" },
   { id: "long", label: "YouTube Long" },
   { id: "shorts", label: "Shorts" },
   { id: "thumbnails", label: "Обложки" },
@@ -51,6 +53,8 @@ const defaultSettings = {
   scoreThreshold: 7,
   maxAttempts: 3,
   imageQuality: "medium",
+  telegramBotToken: "",
+  telegramChatId: "",
 };
 
 export default function App() {
@@ -64,6 +68,7 @@ export default function App() {
   const [timecodesState, setTimecodesState] = usePersistentState("timecodes", {});
   const [communityState, setCommunityState] = usePersistentState("community", {});
   const [socialState, setSocialState] = usePersistentState("social", {});
+  const [weekState, setWeekState] = useLargePersistentState("week-plan", {});
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
   const [ideas, setIdeas] = usePersistentState("ideas", []);
   const [topicsState, setTopicsState] = useLargePersistentState("topics", {});
@@ -174,6 +179,18 @@ export default function App() {
           setState={setTopicsState}
           onUseTopic={useTopicInScript}
           onSaveTopics={saveFoundTopics}
+        />
+      </div>
+      <div style={{ display: tab === "week" ? "block" : "none" }}>
+        <WeekPlanTab
+          state={weekState}
+          setState={setWeekState}
+          longState={longState}
+          communityState={communityState}
+          setCommunityState={setCommunityState}
+          socialState={socialState}
+          setSocialState={setSocialState}
+          settings={settings}
         />
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>

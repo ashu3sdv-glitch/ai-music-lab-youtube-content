@@ -44,3 +44,24 @@ export async function cropToAspect(dataUrl, aspect) {
     .drawImage(img, srcX, srcY, srcW, srcH, 0, 0, target.w, target.h);
   return canvas.toDataURL("image/png");
 }
+
+// Универсальная версия для недельного пакета: из одной базовой картинки
+// получаем лёгкие JPEG-файлы нужных размеров для разных площадок.
+export async function cropToSize(dataUrl, width, height, quality = 0.88) {
+  const img = await new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Не удалось подготовить формат картинки"));
+    el.src = dataUrl;
+  });
+  const scale = Math.max(width / img.width, height / img.height);
+  const srcW = width / scale;
+  const srcH = height / scale;
+  const srcX = (img.width - srcW) / 2;
+  const srcY = (img.height - srcH) / 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(img, srcX, srcY, srcW, srcH, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
