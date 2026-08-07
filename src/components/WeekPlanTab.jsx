@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { callApi } from "../lib/api.js";
-import { cropToSize, fitToSize } from "../lib/crop.js";
+import { cropToSize } from "../lib/crop.js";
 import { generateThumbnail } from "../lib/thumbgen.js";
 import { sendTelegramPost } from "../lib/telegram.js";
 import CopyButton from "./CopyButton.jsx";
@@ -173,34 +173,16 @@ export default function WeekPlanTab({
         const context = contexts[index];
         const result = await generateThumbnail({
           settings: { ...settings, maxAttempts: 1 },
-          topic: `${longState.topic}. ${context.label} иллюстрация без мелкого текста`,
-          context: context.text.slice(0, 3000),
-          aspect: "16:9",
+          topic: `${longState.topic}. ${context.label} квадратная иллюстрация без мелкого текста`,
+          context: `${context.text.slice(0, 3000)}\n\nФормат публикации: квадрат 1:1. Вся надпись, лицо и важные элементы должны полностью помещаться внутри кадра с безопасными отступами от всех краёв.`,
+          aspect: "1:1",
           variant: `weekly-${index + 1}`,
           onProgress: (message) => setBusy(`Картинка ${index + 1}/3: ${message}`),
         });
-        const landscape = await cropToSize(result.image, 1280, 720);
-        const square = await fitToSize(result.image, 1080, 1080);
-        next.push({ label: context.label, landscape, square, prompt: result.prompt, score: result.score });
+        const square = await cropToSize(result.image, 1080, 1080);
+        next.push({ label: context.label, square, prompt: result.prompt, score: result.score });
         patch({ images: [...next, ...images.slice(next.length)] });
       }
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy("");
-    }
-  }
-
-  async function rebuildSquareImages() {
-    if (!images.length) return;
-    setError("");
-    setBusy("Исправляю квадратные форматы без новой генерации…");
-    try {
-      const rebuilt = [];
-      for (const image of images) {
-        rebuilt.push({ ...image, square: await fitToSize(image.landscape, 1080, 1080) });
-      }
-      patch({ images: rebuilt });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -222,7 +204,7 @@ export default function WeekPlanTab({
     updateItem(item.id, { status: "sending", error: "" });
     if (!automatic) setBusy(`Отправляю ${item.id}…`);
     try {
-      const image = images[item.imageIndex]?.landscape || "";
+      const image = images[item.imageIndex]?.square || "";
       await sendTelegramPost({
         botToken: settings.telegramBotToken,
         chatId: settings.telegramChatId,
@@ -258,7 +240,7 @@ export default function WeekPlanTab({
   }, [items, images, settings.telegramBotToken, settings.telegramChatId, data.videoUrl]);
 
   function downloadImage(image, platform, index) {
-    const source = platform === "community" ? image.square : image.landscape;
+    const source = image.square;
     const link = document.createElement("a");
     link.href = source;
     link.download = `week-${index + 1}-${platform}.jpg`;
@@ -281,8 +263,9 @@ export default function WeekPlanTab({
         </div>
         <div className="row">
           <button onClick={prepareTexts} disabled={!!busy}>1. Подготовить 9 текстов</button>
-          <button onClick={prepareImages} disabled={!!busy || !items.length}>2. Создать 3 картинки</button>
-          <button className="secondary" onClick={rebuildSquareImages} disabled={!!busy || !images.length}>Исправить квадраты без генерации</button>
+          <button onClick={prepareImages} disabled={!!busy || !items.length}>
+            {images.length ? "2. Пересоздать 3 квадратные картинки" : "2. Создать 3 квадратные картинки"}
+          </button>
           <button onClick={approveAll} disabled={!!busy || items.length !== 9}>3. Утвердить и запланировать</button>
         </div>
         <div className="muted small">YouTube: {counts.community}/3 · Boosty: {counts.boosty}/2 · Telegram: {counts.telegram}/4. Автоотправка Telegram сработает в назначенное время, пока эта страница открыта.</div>
@@ -292,15 +275,14 @@ export default function WeekPlanTab({
 
       {images.length > 0 && (
         <div className="card">
-          <div className="card-head"><strong>Три базовые картинки</strong><span className="muted small">горизонтальная + квадратная версии</span></div>
+          <div className="card-head"><strong>Три квадратные картинки</strong><span className="muted small">единый формат 1080 × 1080 для всех площадок</span></div>
           <div className="week-images">
             {images.map((image, index) => (
               <div key={index}>
-                <img src={image.landscape} alt={image.label} />
+                <img src={image.square} alt={image.label} />
                 <strong className="small">{index + 1}. {image.label}</strong>
                 <div className="row small">
-                  <button className="link" onClick={() => downloadImage(image, "community", index)}>Квадрат</button>
-                  <button className="link" onClick={() => downloadImage(image, "telegram", index)}>Горизонталь</button>
+                  <button className="link" onClick={() => downloadImage(image, "community", index)}>Скачать 1080 × 1080</button>
                 </div>
               </div>
             ))}
