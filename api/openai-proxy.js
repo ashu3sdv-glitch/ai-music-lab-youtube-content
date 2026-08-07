@@ -35,7 +35,24 @@ async function handleTelegram(request) {
   try {
     if (action === "test") {
       const bot = await telegram(botToken, "getMe");
-      return jsonResponse({ ok: true, bot: { id: bot.id, username: bot.username, name: bot.first_name } });
+      if (!chatId) return jsonResponse({ ok: true, bot: { id: bot.id, username: bot.username, name: bot.first_name } });
+      const requestBody = (value) => ({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(value),
+      });
+      const chat = await telegram(botToken, "getChat", requestBody({ chat_id: chatId }));
+      const membership = await telegram(botToken, "getChatMember", requestBody({ chat_id: chatId, user_id: bot.id }));
+      const isAdmin = membership.status === "administrator" || membership.status === "creator";
+      if (!isAdmin || membership.can_post_messages === false) {
+        throw new Error(`Бот найден, но не может публиковать в ${chat.title || chatId}. Добавьте его администратором с правом публикации сообщений`);
+      }
+      return jsonResponse({
+        ok: true,
+        bot: { id: bot.id, username: bot.username, name: bot.first_name },
+        chat: { id: chat.id, title: chat.title, username: chat.username },
+        canPost: true,
+      });
     }
     if (action !== "send") return jsonResponse({ ok: false, error: "Неизвестное действие" }, 400);
     if (!chatId || !text) return jsonResponse({ ok: false, error: "Нужны ID канала и текст поста" }, 400);

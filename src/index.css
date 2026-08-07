@@ -237,6 +237,12 @@ button.link {
   margin-top: 8px;
 }
 
+.success {
+  color: #29a36a;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
 .busy {
   color: var(--link);
   font-size: 13px;
@@ -464,6 +470,7 @@ video, audio {
 }
 
 .status-published { color: #29a36a; }
+.status-sending { color: #d79a22; }
 .status-error { color: var(--error); }
 .status-scheduled { color: var(--link); }
 
