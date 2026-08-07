@@ -12,10 +12,11 @@ export default function SettingsTab({ links, setLinks, settings, setSettings }) 
 
   async function checkTelegram() {
     if (!settings.telegramBotToken) return setTelegramStatus("Введите токен бота");
+    if (!settings.telegramChatId) return setTelegramStatus("Введите username канала, например @aimusiclab_studio");
     setTelegramStatus("Проверяю…");
     try {
-      const result = await testTelegram(settings.telegramBotToken);
-      setTelegramStatus(`Подключён бот @${result.bot.username || result.bot.name}`);
+      const result = await testTelegram(settings.telegramBotToken, settings.telegramChatId);
+      setTelegramStatus(`✓ Бот @${result.bot.username || result.bot.name} может публиковать в ${result.chat.username ? `@${result.chat.username}` : result.chat.title}`);
     } catch (error) {
       setTelegramStatus(error.message);
     }

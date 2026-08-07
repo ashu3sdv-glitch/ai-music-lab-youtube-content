@@ -65,3 +65,33 @@ export async function cropToSize(dataUrl, width, height, quality = 0.88) {
   canvas.getContext("2d").drawImage(img, srcX, srcY, srcW, srcH, 0, 0, width, height);
   return canvas.toDataURL("image/jpeg", quality);
 }
+
+// Вписывает исходную картинку целиком, не срезая заголовки и объекты.
+// Пустое пространство заполняется затемнённой размытой копией изображения,
+// поэтому квадрат выглядит как полноценный пост, а не как картинка с полосами.
+export async function fitToSize(dataUrl, width, height, quality = 0.88) {
+  const img = await new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Не удалось подготовить безопасный формат картинки"));
+    el.src = dataUrl;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+
+  const coverScale = Math.max(width / img.width, height / img.height);
+  const coverW = img.width * coverScale;
+  const coverH = img.height * coverScale;
+  context.save();
+  context.filter = "blur(28px) brightness(0.45)";
+  context.drawImage(img, (width - coverW) / 2, (height - coverH) / 2, coverW, coverH);
+  context.restore();
+
+  const containScale = Math.min(width / img.width, height / img.height);
+  const containW = img.width * containScale;
+  const containH = img.height * containScale;
+  context.drawImage(img, (width - containW) / 2, (height - containH) / 2, containW, containH);
+  return canvas.toDataURL("image/jpeg", quality);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { callApi } from "../lib/api.js";
-import { cropToSize } from "../lib/crop.js";
+import { cropToSize, fitToSize } from "../lib/crop.js";
 import { generateThumbnail } from "../lib/thumbgen.js";
 import { sendTelegramPost } from "../lib/telegram.js";
 import CopyButton from "./CopyButton.jsx";
@@ -16,6 +16,7 @@ const STATUS_LABEL = {
   approved: "Утверждено",
   scheduled: "Запланировано",
   published: "Опубликовано",
+  sending: "Отправляется…",
   error: "Ошибка",
 };
 
@@ -179,10 +180,27 @@ export default function WeekPlanTab({
           onProgress: (message) => setBusy(`Картинка ${index + 1}/3: ${message}`),
         });
         const landscape = await cropToSize(result.image, 1280, 720);
-        const square = await cropToSize(result.image, 1080, 1080);
+        const square = await fitToSize(result.image, 1080, 1080);
         next.push({ label: context.label, landscape, square, prompt: result.prompt, score: result.score });
         patch({ images: [...next, ...images.slice(next.length)] });
       }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function rebuildSquareImages() {
+    if (!images.length) return;
+    setError("");
+    setBusy("Исправляю квадратные форматы без новой генерации…");
+    try {
+      const rebuilt = [];
+      for (const image of images) {
+        rebuilt.push({ ...image, square: await fitToSize(image.landscape, 1080, 1080) });
+      }
+      patch({ images: rebuilt });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -201,6 +219,7 @@ export default function WeekPlanTab({
       return;
     }
     sending.current.add(item.id);
+    updateItem(item.id, { status: "sending", error: "" });
     if (!automatic) setBusy(`Отправляю ${item.id}…`);
     try {
       const image = images[item.imageIndex]?.landscape || "";
@@ -211,9 +230,14 @@ export default function WeekPlanTab({
         image,
         videoUrl: item.hasVideoLink ? data.videoUrl : "",
       });
-      updateItem(item.id, { status: "published", error: "", publishedAt: new Date().toISOString() });
+      updateItem(item.id, {
+        status: "published",
+        error: "",
+        result: "Сообщение успешно отправлено в Telegram",
+        publishedAt: new Date().toISOString(),
+      });
     } catch (e) {
-      updateItem(item.id, { status: "error", error: e.message });
+      updateItem(item.id, { status: "error", error: e.message, result: "" });
       if (!automatic) setError(e.message);
     } finally {
       sending.current.delete(item.id);
@@ -258,6 +282,7 @@ export default function WeekPlanTab({
         <div className="row">
           <button onClick={prepareTexts} disabled={!!busy}>1. Подготовить 9 текстов</button>
           <button onClick={prepareImages} disabled={!!busy || !items.length}>2. Создать 3 картинки</button>
+          <button className="secondary" onClick={rebuildSquareImages} disabled={!!busy || !images.length}>Исправить квадраты без генерации</button>
           <button onClick={approveAll} disabled={!!busy || items.length !== 9}>3. Утвердить и запланировать</button>
         </div>
         <div className="muted small">YouTube: {counts.community}/3 · Boosty: {counts.boosty}/2 · Telegram: {counts.telegram}/4. Автоотправка Telegram сработает в назначенное время, пока эта страница открыта.</div>
@@ -315,8 +340,13 @@ export default function WeekPlanTab({
               <div className="row">
                 <CopyButton text={() => `${item.title ? `${item.title}\n\n` : ""}${item.text}`} />
                 {images[item.imageIndex] && <button className="secondary" onClick={() => downloadImage(images[item.imageIndex], item.platform, item.imageIndex)}>Скачать картинку</button>}
-                {item.platform === "telegram" && <button onClick={() => sendTelegram(item)} disabled={!!busy || item.status === "published"}>Отправить сейчас</button>}
+                {item.platform === "telegram" && (
+                  <button onClick={() => sendTelegram(item)} disabled={item.status === "sending" || item.status === "published"}>
+                    {item.status === "sending" ? "Отправляю…" : item.status === "published" ? "Уже отправлено" : "Отправить сейчас"}
+                  </button>
+                )}
               </div>
+              {item.result && <div className="success">{item.result}</div>}
               {item.error && <div className="error">{item.error}</div>}
             </div>
           ))}
