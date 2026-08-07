@@ -163,9 +163,9 @@ export default function WeekPlanTab({
     if (!longState?.topic) return setError("Сначала укажите тему Long-видео");
     setError("");
     const contexts = [
-      { label: "Главная", text: longState?.description?.synopsis || longState?.script || longState.topic },
-      { label: "Практическая", text: items.find((x) => x.platform === "boosty")?.text || longState?.script || longState.topic },
-      { label: "Обсуждение", text: items.find((x) => x.platform === "telegram" && x.index > 1)?.text || longState?.script || longState.topic },
+      { label: "Главная", people: "молодой взрослый мужчина 20–35 лет", text: longState?.description?.synopsis || longState?.script || longState.topic },
+      { label: "Практическая", people: "молодая взрослая женщина 20–35 лет", text: items.find((x) => x.platform === "boosty")?.text || longState?.script || longState.topic },
+      { label: "Обсуждение", people: "молодые взрослые мужчина и женщина 20–35 лет либо композиция без людей, если она лучше раскрывает тему", text: items.find((x) => x.platform === "telegram" && x.index > 1)?.text || longState?.script || longState.topic },
     ];
     const next = [];
     try {
@@ -173,8 +173,8 @@ export default function WeekPlanTab({
         const context = contexts[index];
         const result = await generateThumbnail({
           settings: { ...settings, maxAttempts: 1 },
-          topic: `${longState.topic}. ${context.label} квадратная иллюстрация без мелкого текста`,
-          context: `${context.text.slice(0, 3000)}\n\nФормат публикации: квадрат 1:1. Вся надпись, лицо и важные элементы должны полностью помещаться внутри кадра с безопасными отступами от всех краёв.`,
+          topic: `${longState.topic}. ${context.label} квадратная иллюстрация без мелкого текста. Персонажи: ${context.people}`,
+          context: `${context.text.slice(0, 3000)}\n\nФормат публикации: квадрат 1:1. Вся надпись, лицо и важные элементы должны полностью помещаться внутри кадра с безопасными отступами от всех краёв. Если в кадре есть люди, показывай только молодых взрослых 20–35 лет: современных, энергичных, естественных; чередуй мужчин и женщин. Не изображай пожилых людей или людей среднего возраста. Не добавляй человека, если предметная, музыкальная или технологическая композиция лучше объясняет тему.`,
           aspect: "1:1",
           variant: `weekly-${index + 1}`,
           onProgress: (message) => setBusy(`Картинка ${index + 1}/3: ${message}`),
