@@ -16,9 +16,27 @@ const STATUS_LABEL = {
   approved: "Утверждено",
   scheduled: "Запланировано",
   published: "Опубликовано",
+  skipped: "Пропущено",
   sending: "Отправляется…",
   error: "Ошибка",
 };
+
+function hasWeekContent(value) {
+  return Boolean(value && (value.items?.length || value.images?.length || value.releaseAt || value.videoUrl || value.preparedAt));
+}
+
+function weekTitle(week) {
+  if (week.title) return week.title;
+  if (week.releaseAt) return `Неделя от ${new Date(week.releaseAt).toLocaleDateString("ru-RU")}`;
+  return "Новая неделя";
+}
+
+function normalizeWeeks(value) {
+  if (Array.isArray(value?.weeks)) return value;
+  if (!hasWeekContent(value)) return { weeks: [], activeWeekId: "" };
+  const id = value.id || "legacy-week";
+  return { weeks: [{ ...value, id, title: value.title || weekTitle(value), archived: false }], activeWeekId: id };
+}
 
 function localDateTime(date) {
   const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
@@ -77,7 +95,10 @@ export default function WeekPlanTab({
   setSocialState,
   settings,
 }) {
-  const data = state || {};
+  const collection = normalizeWeeks(state || {});
+  const weeks = collection.weeks || [];
+  const activeWeekId = collection.activeWeekId || weeks[0]?.id || "";
+  const data = weeks.find((week) => week.id === activeWeekId) || {};
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const sending = useRef(new Set());
@@ -91,14 +112,56 @@ export default function WeekPlanTab({
   }), [items]);
 
   function patch(next) {
-    setState({ ...data, ...next });
+    setState((current) => {
+      const normalized = normalizeWeeks(current || {});
+      return {
+        ...normalized,
+        activeWeekId,
+        weeks: normalized.weeks.map((week) => week.id === activeWeekId ? { ...week, ...next } : week),
+      };
+    });
   }
 
   function updateItem(id, next) {
     setState((current) => ({
-      ...(current || {}),
-      items: (current?.items || []).map((item) => item.id === id ? { ...item, ...next } : item),
+      ...normalizeWeeks(current || {}),
+      activeWeekId,
+      weeks: normalizeWeeks(current || {}).weeks.map((week) => week.id === activeWeekId ? {
+        ...week,
+        items: (week.items || []).map((item) => item.id === id ? { ...item, ...next } : item),
+      } : week),
     }));
+  }
+
+  function createWeek() {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const releaseDate = new Date(now);
+    releaseDate.setHours(18, 0, 0, 0);
+    const week = {
+      id,
+      title: `${now.toLocaleDateString("ru-RU")}${longState?.topic ? ` — ${longState.topic}` : ""}`,
+      createdAt: now.toISOString(),
+      releaseAt: localDateTime(releaseDate),
+      videoUrl: "",
+      items: [],
+      images: [],
+      archived: false,
+    };
+    setState((current) => {
+      const normalized = normalizeWeeks(current || {});
+      return { ...normalized, weeks: [week, ...normalized.weeks], activeWeekId: id };
+    });
+    setError("");
+  }
+
+  function selectWeek(id) {
+    setState((current) => ({ ...normalizeWeeks(current || {}), activeWeekId: id }));
+    setError("");
+  }
+
+  function toggleArchive() {
+    patch({ archived: !data.archived });
   }
 
   function changeReleaseAt(releaseAt) {
@@ -249,6 +312,33 @@ export default function WeekPlanTab({
 
   return (
     <div>
+      <div className="card week-switcher">
+        <div className="card-head"><strong>Мои недели</strong><span className="muted small">Каждый план сохраняется отдельно</span></div>
+        <div className="week-switcher-controls">
+          <div className="field">
+            <label>Открытая неделя</label>
+            <select value={activeWeekId} onChange={(e) => selectWeek(e.target.value)} disabled={!weeks.length}>
+              {!weeks.length && <option value="">Пока нет недель</option>}
+              {weeks.map((week) => (
+                <option key={week.id} value={week.id}>
+                  {week.archived ? "✓ " : ""}{weekTitle(week)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="row">
+            <button onClick={createWeek}>+ Создать новую неделю</button>
+            {activeWeekId && <button className="secondary" onClick={toggleArchive}>{data.archived ? "Вернуть в работу" : "Завершить неделю"}</button>}
+          </div>
+        </div>
+        <div className="muted small">Новая неделя не удаляет неопубликованные посты из предыдущей. Их можно открыть в списке выше в любое время.</div>
+      </div>
+
+      {!activeWeekId && (
+        <div className="card"><strong>Создайте первую неделю, чтобы подготовить публикации.</strong></div>
+      )}
+
+      {activeWeekId && <>
       <div className="card">
         <div className="card-head"><strong>Подготовить неделю</strong><span className="muted small">1 Long → 9 публикаций → 3 картинки</span></div>
         <div className="week-controls">
@@ -334,6 +424,7 @@ export default function WeekPlanTab({
           ))}
         </div>
       )}
+      </>}
     </div>
   );
 }
