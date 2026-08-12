@@ -431,6 +431,24 @@ video, audio {
   gap: 12px;
 }
 
+.week-switcher-controls {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.week-switcher-controls .field {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .week-switcher-controls {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
 .week-images {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
