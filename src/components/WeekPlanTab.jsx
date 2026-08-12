@@ -322,10 +322,25 @@ export default function WeekPlanTab({
   return (
     <div>
       <div className="card week-switcher">
-        <div className="card-head"><strong>Мои недели</strong><span className="muted small">Каждый план сохраняется отдельно</span></div>
+        <div className="card-head"><strong>Мои недели</strong><span className="muted small">Сохранено: {weeks.length}</span></div>
+        {weeks.length > 0 && (
+          <div className="week-tabs" aria-label="Переключение между неделями">
+            {weeks.map((week, index) => (
+              <button
+                key={week.id}
+                className={`week-tab ${week.id === activeWeekId ? "active" : ""}`}
+                onClick={() => selectWeek(week.id)}
+                title={weekTitle(week)}
+              >
+                <span>{week.archived ? "✓ " : ""}{index === 0 ? "Новая: " : "Прошлая: "}{weekTitle(week)}</span>
+                <small>{(week.items || []).filter((item) => item.status === "published").length}/{(week.items || []).length || 9} опубликовано</small>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="week-switcher-controls">
           <div className="field">
-            <label>Открытая неделя</label>
+            <label>Открытая неделя — можно выбрать и здесь</label>
             <select value={activeWeekId} onChange={(e) => selectWeek(e.target.value)} disabled={!weeks.length}>
               {!weeks.length && <option value="">Пока нет недель</option>}
               {weeks.map((week) => (
@@ -340,7 +355,7 @@ export default function WeekPlanTab({
             {activeWeekId && <button className="secondary" onClick={toggleArchive}>{data.archived ? "Вернуть в работу" : "Завершить неделю"}</button>}
           </div>
         </div>
-        <div className="muted small">Новая неделя не удаляет неопубликованные посты из предыдущей. Их можно открыть в списке выше в любое время.</div>
+        <div className="muted small">Чтобы вернуться назад, нажмите кнопку «Прошлая» выше. Новая неделя не удаляет неопубликованные посты из предыдущей.</div>
       </div>
 
       {!activeWeekId && (
