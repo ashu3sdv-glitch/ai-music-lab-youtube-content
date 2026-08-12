@@ -104,6 +104,7 @@ export default function WeekPlanTab({
   const sending = useRef(new Set());
   const items = data.items || [];
   const images = data.images || [];
+  const allPlanned = items.length === 9 && items.every((item) => ["scheduled", "published", "skipped"].includes(item.status));
 
   const counts = useMemo(() => ({
     community: items.filter((x) => x.platform === "community").length,
@@ -254,7 +255,15 @@ export default function WeekPlanTab({
   }
 
   function approveAll() {
-    patch({ items: items.map((item) => ({ ...item, status: "scheduled", error: "" })) });
+    patch({
+      items: items.map((item) => ({
+        ...item,
+        status: ["published", "skipped"].includes(item.status) ? item.status : "scheduled",
+        error: "",
+      })),
+      approvedAt: new Date().toISOString(),
+    });
+    setError("");
   }
 
   async function sendTelegram(item, automatic = false) {
@@ -356,9 +365,12 @@ export default function WeekPlanTab({
           <button onClick={prepareImages} disabled={!!busy || !items.length}>
             {images.length ? "2. Пересоздать 3 квадратные картинки" : "2. Создать 3 квадратные картинки"}
           </button>
-          <button onClick={approveAll} disabled={!!busy || items.length !== 9}>3. Утвердить и запланировать</button>
+          <button onClick={approveAll} disabled={!!busy || items.length !== 9}>
+            {allPlanned ? "✓ 9 публикаций запланированы" : "3. Утвердить и запланировать"}
+          </button>
         </div>
         <div className="muted small">YouTube: {counts.community}/3 · Boosty: {counts.boosty}/2 · Telegram: {counts.telegram}/4. Автоотправка Telegram сработает в назначенное время, пока эта страница открыта.</div>
+        {allPlanned && <div className="success">Готово: публикации утверждены и получили статус «Запланировано».</div>}
         {busy && <div className="busy">{busy}</div>}
         {error && <div className="error">{error}</div>}
       </div>
