@@ -442,9 +442,56 @@ video, audio {
   margin-bottom: 0;
 }
 
+.week-tabs {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+button.week-tab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  overflow: hidden;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-align: left;
+}
+
+button.week-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.week-tab small {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+button.week-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+button.week-tab.active small {
+  color: var(--accent-text);
+  opacity: 0.8;
+}
+
 @media (max-width: 640px) {
   .week-switcher-controls {
     grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  button.week-tab {
+    align-items: flex-start;
+    flex-direction: column;
     gap: 4px;
   }
 }
