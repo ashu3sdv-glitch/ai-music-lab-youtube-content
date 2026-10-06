@@ -240,6 +240,7 @@ export default function App() {
               boosty,
             }, { id: crypto.randomUUID() }))
           }
+          onOpenShorts={() => setTab("shorts")}
         />
       </div>
       <div style={{ display: tab === "topics" ? "block" : "none" }}>

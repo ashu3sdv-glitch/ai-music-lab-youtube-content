@@ -26,7 +26,7 @@ const empty = {
 // YouTube Long: тема → хуки → сценарий (+правка) → описание/tags (+правка) → план монтажа.
 // onShortsReady/onCommunityReady/onSocialReady — конвейер «Подготовить тексты»: результаты
 // уходят в состояние вкладок Shorts, Записи и Соцсети (владелец состояния — App).
-export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady, onSocialReady, onPackageReady }) {
+export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady, onSocialReady, onPackageReady, onOpenShorts }) {
   // Основной рабочий режим канала сейчас — четыре самостоятельных Shorts.
   // Старый Long-процесс остаётся ниже в коде, но скрыт до возвращения формата.
   const data = { ...empty, ...state, inputMode: "custom" };
@@ -278,6 +278,14 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
                   ? `Продолжить подготовку (${visibleCustomProgress.shorts.length}/4 Shorts)`
                   : "Создать 4 Shorts и публикации")}
             </button>
+            {!busy && !visibleCustomProgress.completedAt && visibleCustomProgress.shorts.length === 4 && (
+              <button type="button" className="secondary" onClick={() => {
+                onShortsReady(visibleCustomProgress.shorts);
+                onOpenShorts?.();
+              }}>
+                Открыть 4 готовых Shorts
+              </button>
+            )}
           </div>
           {busy.startsWith("Готовлю комплект") && (
             <div className="busy" role="status" aria-live="polite">{busy}</div>
