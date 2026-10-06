@@ -2,7 +2,11 @@ import { useState } from "react";
 import { callApi } from "../lib/api.js";
 import LinksPicker from "./LinksPicker.jsx";
 import CopyButton from "./CopyButton.jsx";
-import { buildCustomScriptState } from "../../shared/custom-script.js";
+import {
+  appendCustomGeneratedShort,
+  buildCustomScriptState,
+  normalizeCustomGenerationProgress,
+} from "../../shared/custom-script.js";
 
 const empty = {
   topic: "",
@@ -31,9 +35,13 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
   const [scriptFix, setScriptFix] = useState("");
   const [descFix, setDescFix] = useState("");
   const [customNotice, setCustomNotice] = useState("");
+  const visibleCustomProgress = normalizeCustomGenerationProgress(data.customProgress, {
+    title: data.customTitle,
+    script: data.customScript,
+  });
 
   function patch(p) {
-    setState({ ...data, ...p });
+    setState((current) => ({ ...empty, ...(current || {}), ...p }));
   }
 
   async function run(label, fn) {
@@ -166,6 +174,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
   async function prepareCustomPackage() {
     setError("");
     setCustomNotice("");
+    let completedShorts = 0;
     let next;
     try {
       next = buildCustomScriptState({ title: data.customTitle, script: data.customScript });
@@ -175,27 +184,58 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
     }
     try {
       const payload = { topic: next.topic, script: next.script };
-      setBusy("Готовлю комплект (1/3): четыре Curiosity Story Shorts…");
-      const { shorts } = await callApi("generate-shorts", {
-        mode: "curiosity",
+      let progress = normalizeCustomGenerationProgress(data.customProgress, {
         title: data.customTitle,
-        material: data.customScript,
+        script: data.customScript,
       });
+      if (progress.completedAt) {
+        progress = normalizeCustomGenerationProgress(null, { title: data.customTitle, script: data.customScript });
+      }
+      let shorts = progress.shorts;
+      completedShorts = shorts.length;
+      for (let index = shorts.length; index < 4; index += 1) {
+        setBusy(`Готовлю комплект: Shorts ${index + 1}/4…`);
+        const { short } = await callApi("generate-shorts", {
+          mode: "curiosity-single",
+          title: data.customTitle,
+          material: data.customScript,
+          shortIndex: index,
+          previousTopics: shorts.map((item) => item.topic),
+        });
+        progress = appendCustomGeneratedShort(progress, short);
+        shorts = progress.shorts;
+        completedShorts = shorts.length;
+        patch({ customProgress: progress });
+      }
       setBusy("Готовлю комплект (2/3): четыре записи YouTube…");
-      const { posts } = await callApi("generate-community", { ...payload, shortsSeries: shorts });
+      let posts = progress.posts;
+      if (posts.length !== 4) {
+        ({ posts } = await callApi("generate-community", { ...payload, shortsSeries: shorts }));
+        progress = { ...progress, posts };
+        patch({ customProgress: progress });
+      }
+      onCommunityReady(posts);
       setBusy("Готовлю комплект (3/3): Telegram и Boosty…");
-      const social = await callApi("generate-social", { ...payload, shortsSeries: shorts });
+      let social = progress.social;
+      if ((social?.telegram || []).length !== 4 || (social?.boosty || []).length !== 2) {
+        social = await callApi("generate-social", { ...payload, shortsSeries: shorts });
+        progress = { ...progress, social };
+        patch({ customProgress: progress });
+      }
+      onSocialReady(social);
       if ((shorts || []).length !== 4 || (posts || []).length !== 4 || (social.telegram || []).length !== 4 || (social.boosty || []).length !== 2) {
         throw new Error(`Получено не всё: Shorts ${(shorts || []).length}/4, Записи ${(posts || []).length}/4, Telegram ${(social.telegram || []).length}/4, Boosty ${(social.boosty || []).length}/2. Нажмите кнопку ещё раз.`);
       }
-      patch(next);
+      progress = { ...progress, completedAt: new Date().toISOString() };
+      patch({ ...next, customProgress: progress });
       onShortsReady(shorts);
       onCommunityReady(posts);
       onSocialReady(social);
       onPackageReady?.({ shorts, community: posts, telegram: social.telegram || [], boosty: social.boosty || [] });
       setCustomNotice("Готово: 4 Shorts, 4 полезные записи YouTube, 4 Telegram и 2 Boosty разложены по своим вкладкам. Во вкладке «Картинки» можно создать 4 квадратные картинки — по одной на тему — и использовать их в YouTube, Telegram и Boosty. Обложки Shorts вы делаете отдельно.");
     } catch (e) {
-      setError(e.message || "Не удалось подготовить комплект");
+      const saved = completedShorts > 0 ? ` Уже сохранено Shorts: ${completedShorts}/4. Нажмите кнопку ещё раз — работа продолжится с этого места.` : "";
+      setError(`${e.message || "Не удалось подготовить комплект"}${saved}`);
     } finally {
       setBusy("");
     }
@@ -208,19 +248,26 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         <>
           <div className="field">
             <label>Общее название серии — необязательно</label>
-            <input value={data.customTitle} onChange={(e) => patch({ customTitle: e.target.value })} placeholder="Можно оставить пустым: названия четырёх Shorts будут взяты из сценария" />
+            <input value={data.customTitle} disabled={!!busy} onChange={(e) => patch({ customTitle: e.target.value, customProgress: null })} placeholder="Можно оставить пустым: названия четырёх Shorts будут взяты из сценария" />
           </div>
           <div className="field">
             <label>Общий сценарий с четырьмя разделами</label>
-            <textarea className="linkedin-source" value={data.customScript} onChange={(e) => patch({ customScript: e.target.value })} placeholder="Вставьте общий материал. Внутри должны быть четыре темы или четыре смысловых раздела…" />
+            <textarea className="linkedin-source" value={data.customScript} disabled={!!busy} onChange={(e) => patch({ customScript: e.target.value, customProgress: null })} placeholder="Вставьте общий материал. Внутри должны быть четыре темы или четыре смысловых раздела…" />
           </div>
           <div className="row">
             <button onClick={prepareCustomPackage} disabled={!!busy}>
-              {busy.startsWith("Готовлю комплект") ? busy : "Создать 4 Shorts и публикации"}
+              {busy.startsWith("Готовлю комплект")
+                ? busy
+                : (!visibleCustomProgress.completedAt && visibleCustomProgress.shorts.length > 0
+                  ? `Продолжить подготовку (${visibleCustomProgress.shorts.length}/4 Shorts)`
+                  : "Создать 4 Shorts и публикации")}
             </button>
           </div>
           {busy.startsWith("Готовлю комплект") && (
             <div className="busy" role="status" aria-live="polite">{busy}</div>
+          )}
+          {!busy && !visibleCustomProgress.completedAt && visibleCustomProgress.shorts.length > 0 && (
+            <div className="muted small">Сохранено {visibleCustomProgress.shorts.length}/4 Shorts. Следующий запуск продолжит с этого места.</div>
           )}
           {customNotice && <div className="success" role="status">{customNotice}</div>}
           {error && <div className="error" role="alert">{error}</div>}
@@ -388,7 +435,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         </div>
       )}
 
-      {busy && <div className="busy">{busy}</div>}
+      {busy && data.inputMode !== "custom" && <div className="busy">{busy}</div>}
       {error && data.inputMode !== "custom" && <div className="error">{error}</div>}
     </div>
   );

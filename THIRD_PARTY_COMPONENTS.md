@@ -1,5 +1,9 @@
 # Third-party components
 
+## 2026-10-06 — Resumable Curiosity Shorts generation
+
+No third-party package, repository code, model provider or SDK was added. The independently implemented workflow reuses the existing Anthropic integration but requests the four Shorts as four bounded JSON cards. Each successful card is persisted locally before the next request; a retry resumes from the saved card instead of repeating completed model calls. The change reduces output-truncation risk and unnecessary paid retries without sending the source to any new service.
+
 ## 2026-10-04 — Director Room
 
 No third-party package, repository code, asset, external media API or browser-automation SDK was added. The independently implemented Director Room extends the existing Film Assistant, React interface, local Film Studio state and Anthropic text integration. It stores three bounded directing approaches (`simple`, `cinematic`, `bold`), requires the author to approve one, and passes only that approved creative brief into the existing film-package generator.
