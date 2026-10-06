@@ -65,6 +65,10 @@ export function appendCustomGeneratedShort(progress, short) {
   };
 }
 
+export function isAnthropicCreditError(value) {
+  return /credit balance|plans\s*&\s*billing|purchase credits|слишком низк.*баланс/i.test(String(value || ""));
+}
+
 export function buildCustomScriptState({ title, script } = {}) {
   const suppliedTitle = clean(title);
   const topic = suppliedTitle || "Серия из четырёх Shorts";

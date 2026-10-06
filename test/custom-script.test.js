@@ -4,6 +4,7 @@ import {
   appendCustomGeneratedShort,
   buildCustomScriptState,
   customScriptFingerprint,
+  isAnthropicCreditError,
   normalizeCustomGenerationProgress,
 } from "../shared/custom-script.js";
 
@@ -59,4 +60,10 @@ test("a generated Shorts card is normalized and invalidates dependent publicatio
   assert.equal(next.shorts[0].topic, "Первая");
   assert.deepEqual(next.posts, []);
   assert.equal(next.social, null);
+});
+
+test("Anthropic billing failures are distinguished from retryable generation errors", () => {
+  assert.equal(isAnthropicCreditError("Your credit balance is too low to access the Anthropic API"), true);
+  assert.equal(isAnthropicCreditError("Please go to Plans & Billing to purchase credits"), true);
+  assert.equal(isAnthropicCreditError("Соединение с сервером прервалось"), false);
 });

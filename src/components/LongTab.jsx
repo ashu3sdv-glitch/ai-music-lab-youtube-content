@@ -5,6 +5,7 @@ import CopyButton from "./CopyButton.jsx";
 import {
   appendCustomGeneratedShort,
   buildCustomScriptState,
+  isAnthropicCreditError,
   normalizeCustomGenerationProgress,
 } from "../../shared/custom-script.js";
 
@@ -207,6 +208,10 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         completedShorts = shorts.length;
         patch({ customProgress: progress });
       }
+      // Четыре сценария уже являются самостоятельным полезным результатом.
+      // Показываем их сразу, даже если на следующих платных запросах
+      // (Community / Telegram / Boosty) закончится баланс провайдера.
+      onShortsReady(shorts);
       setBusy("Готовлю комплект (2/3): четыре записи YouTube…");
       let posts = progress.posts;
       if (posts.length !== 4) {
@@ -234,8 +239,19 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
       onPackageReady?.({ shorts, community: posts, telegram: social.telegram || [], boosty: social.boosty || [] });
       setCustomNotice("Готово: 4 Shorts, 4 полезные записи YouTube, 4 Telegram и 2 Boosty разложены по своим вкладкам. Во вкладке «Картинки» можно создать 4 квадратные картинки — по одной на тему — и использовать их в YouTube, Telegram и Boosty. Обложки Shorts вы делаете отдельно.");
     } catch (e) {
-      const saved = completedShorts > 0 ? ` Уже сохранено Shorts: ${completedShorts}/4. Нажмите кнопку ещё раз — работа продолжится с этого места.` : "";
-      setError(`${e.message || "Не удалось подготовить комплект"}${saved}`);
+      const message = e.message || "Не удалось подготовить комплект";
+      const creditError = isAnthropicCreditError(message);
+      if (creditError) {
+        const saved = completedShorts === 4
+          ? " Четыре Shorts сохранены и доступны во вкладке «Shorts»; не готовы только следующие публикации."
+          : completedShorts > 0
+            ? ` Сохранено Shorts: ${completedShorts}/4.`
+            : "";
+        setError(`На счёте Anthropic закончились средства. Пополните баланс Anthropic или переключите текстовую генерацию на другой API.${saved}`);
+      } else {
+        const saved = completedShorts > 0 ? ` Уже сохранено Shorts: ${completedShorts}/4. Нажмите кнопку ещё раз — работа продолжится с этого места.` : "";
+        setError(`${message}${saved}`);
+      }
     } finally {
       setBusy("");
     }
