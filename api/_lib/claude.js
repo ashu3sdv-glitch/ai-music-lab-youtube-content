@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
+export const FILM_MODEL = process.env.CLAUDE_FILM_MODEL || "claude-sonnet-5";
 // Дешёвая модель для черновой работы (выжимка длинных транскриптов):
 // читает в ~3 раза дешевле основной, качества для сжатия текста достаточно.
 export const CHEAP_MODEL = process.env.CLAUDE_CHEAP_MODEL || "claude-haiku-4-5-20251001";
@@ -8,13 +9,14 @@ export const CHEAP_MODEL = process.env.CLAUDE_CHEAP_MODEL || "claude-haiku-4-5-2
 // Цены за миллион токенов (USD) — для счётчика расходов в шапке приложения.
 const PRICES = {
   default: { input: 3, output: 15 },
+  "claude-sonnet-5": { input: 2, output: 10 },
   [CHEAP_MODEL]: { input: 1, output: 5 },
 };
 
 // Вызывает Claude с системным промптом (контент скилла + обвязка) и возвращает текст.
 // usage — необязательный коллектор: в него суммируются потраченные токены вызова,
 // jsonHandler превращает их в поле _usage ответа (счётчик стоимости на фронте).
-export async function askClaude({ system, user, maxTokens = 8000, usage, model }) {
+export async function askClaude({ system, user, messages, maxTokens = 8000, usage, model, effort, thinking, responseMeta }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY не задан в переменных окружения Vercel");
@@ -25,8 +27,14 @@ export async function askClaude({ system, user, maxTokens = 8000, usage, model }
     model: usedModel,
     max_tokens: maxTokens,
     system,
-    messages: [{ role: "user", content: user }],
+    messages: Array.isArray(messages) && messages.length ? messages : [{ role: "user", content: user }],
+    ...(effort ? { output_config: { effort } } : {}),
+    ...(thinking ? { thinking: { type: thinking } } : {}),
   });
+  if (responseMeta && typeof responseMeta === "object") {
+    responseMeta.stopReason = response.stop_reason || "";
+    responseMeta.outputTokens = response.usage?.output_tokens || 0;
+  }
   if (usage && response.usage) {
     const price = PRICES[usedModel] || PRICES.default;
     usage.input += response.usage.input_tokens || 0;
@@ -71,23 +79,63 @@ export function extractJson(text) {
 // ошибки в длинном ответе. Повторный запрос выполняется только если обычный
 // JSON.parse не сработал, поэтому штатные генерации не становятся дороже.
 export async function askClaudeJson(options) {
-  const text = await askClaude(options);
+  const {
+    requestClaude = askClaude,
+    maxContinuations = 0,
+    continuationMaxTokens = 3000,
+    ...claudeOptions
+  } = options;
+  const responseMeta = {};
+  let text = await requestClaude({ ...claudeOptions, responseMeta });
+  let parseError;
   try {
     return extractJson(text);
-  } catch (parseError) {
-    console.warn("Claude вернул повреждённый JSON, запускаю восстановление:", parseError.message);
-    const repaired = await askClaude({
-      usage: options.usage,
-      model: options.model,
-      maxTokens: options.maxTokens,
-      system: `Ты восстанавливаешь повреждённый JSON. Исправь только синтаксис: запятые, кавычки, скобки и оборванные элементы. Не добавляй новые факты и не меняй смысл. Верни только один валидный JSON-объект без Markdown и пояснений.`,
-      user: `Исправь этот ответ и верни валидный JSON:\n\n${text}`,
+  } catch (cause) {
+    parseError = cause;
+  }
+
+  let finalStopReason = responseMeta.stopReason;
+  if (finalStopReason === "max_tokens" && maxContinuations > 0) {
+    const continuationMeta = {};
+    const continuation = await requestClaude({
+      ...claudeOptions,
+      maxTokens: continuationMaxTokens,
+      responseMeta: continuationMeta,
+      messages: [
+        { role: "user", content: claudeOptions.user },
+        { role: "assistant", content: text },
+        { role: "user", content: "Продолжи ровно со следующего символа оборванного JSON. Не повторяй уже написанное, не добавляй Markdown или пояснения. Только закончи JSON-объект." },
+      ],
     });
+    text += continuation;
+    finalStopReason = continuationMeta.stopReason;
     try {
-      return extractJson(repaired);
-    } catch {
-      throw new Error("Нейросеть вернула повреждённый ответ. Нажмите «Найти боли аудитории» ещё раз.");
+      return extractJson(text);
+    } catch (cause) {
+      parseError = cause;
     }
+  }
+
+  if (finalStopReason === "max_tokens") {
+    const error = new Error("Нейросеть не успела завершить длинный ответ. Повторите текущий запрос.");
+    error.code = "MODEL_OUTPUT_TRUNCATED";
+    throw error;
+  }
+
+  console.warn("Claude вернул повреждённый JSON, запускаю восстановление:", parseError.message);
+  const repaired = await requestClaude({
+    usage: claudeOptions.usage,
+    model: claudeOptions.model,
+    effort: claudeOptions.effort,
+    thinking: claudeOptions.thinking,
+    maxTokens: claudeOptions.maxTokens,
+    system: `Ты восстанавливаешь повреждённый JSON. Исправь только синтаксис: запятые, кавычки, скобки и оборванные элементы. Не добавляй новые факты и не меняй смысл. Верни только один валидный JSON-объект без Markdown и пояснений.`,
+    user: `Исправь этот ответ и верни валидный JSON:\n\n${text}`,
+  });
+  try {
+    return extractJson(repaired);
+  } catch {
+    throw new Error("Нейросеть вернула повреждённый ответ. Повторите текущий запрос ещё раз.");
   }
 }
 
@@ -109,7 +157,10 @@ export function jsonHandler(fn) {
       res.status(200).json(result);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: err.message || "Внутренняя ошибка" });
+      res.status(500).json({
+        error: err.message || "Внутренняя ошибка",
+        ...(usage.input > 0 ? { _usage: { ...usage, cost: usageCost(usage) } } : {}),
+      });
     }
   };
 }

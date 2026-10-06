@@ -28,7 +28,7 @@ BOOSTY (2 поста, 1000-2000 знаков, у каждого заголово
  "boosty": [{"angle": "тип поста", "title": "заголовок", "text": "текст поста"}]}`;
 
 export default jsonHandler(async (body, usage) => {
-  const { topic, script, synopsis, current, instruction, platform, channelBio } = body;
+  const { topic, script, synopsis, shortsSeries, current, instruction, platform, channelBio } = body;
 
   // Режим точечной правки одного поста.
   if (current && instruction) {
@@ -41,10 +41,13 @@ export default jsonHandler(async (body, usage) => {
     return extractJson(text);
   }
 
-  if (!topic && !script && !synopsis) throw new Error("Нет темы, пересказа или сценария главного ролика");
+  if (!topic && !script && !synopsis && !shortsSeries?.length) throw new Error("Нет тем или готового сценария");
+  const seriesBlock = Array.isArray(shortsSeries) && shortsSeries.length
+    ? `\n\nЧетыре Shorts (Telegram обязан соответствовать им один к одному и в том же порядке):\n${shortsSeries.slice(0, 4).map((item, index) => `${index + 1}. Тема: ${item.topic || "—"}\nСценарий: ${item.script || "—"}\nВывод: ${item.payoff || "—"}\nЗаголовки: ${(item.titles || []).join(" | ")}\nОписание: ${item.description || "—"}`).join("\n\n")}`
+    : "";
   const text = await askClaude({ usage,
     system: SYSTEM,
-    user: `${bioBlock(channelBio)}Тема Long-видео: ${topic || "—"}\n\nКраткий пересказ: ${synopsis || "—"}\n\nСценарий (ГЛАВНЫЙ источник — вытаскивай из него конкретику: форматы, кнопки, критерии, ошибки, шаги):\n${script ? script.slice(0, 6000) : "—"}\n\nНапиши ровно 4 содержательных поста для Telegram и ровно 2 мини-статьи для Boosty.`,
+    user: `${bioBlock(channelBio)}Общая тема серии: ${topic || "—"}\n\nГотовый материал (ГЛАВНЫЙ источник — вытаскивай из него конкретику):\n${script ? script.slice(0, 7000) : "—"}${seriesBlock}\n\nНапиши ровно 4 содержательных поста для Telegram — строго по одному на каждый Shorts и в том же порядке. Добавь каждому Telegram-посту sourceIndex 0–3. Затем напиши ровно 2 мини-статьи для Boosty по двум самым содержательным темам серии и укажи sourceIndex соответствующей темы.`,
     maxTokens: 5000,
   });
   return extractJson(text);

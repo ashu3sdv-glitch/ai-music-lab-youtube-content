@@ -4,13 +4,12 @@ import CopyButton from "./CopyButton.jsx";
 
 const emptyState = { posts: [], intervalDays: 2, baseDate: "" };
 
-// Посты для «Записей»: 3 анонса главного Long-видео под разными ракурсами
-// (не Shorts) + график публикации.
+// Четыре поста для «Записей»: по одному на каждый подготовленный Shorts.
 export default function CommunityTab({ state, setState, longState }) {
   const data = { ...emptyState, ...state };
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const [fixText, setFixText] = useState(["", "", ""]);
+  const [fixText, setFixText] = useState(["", "", "", ""]);
 
   function patch(p) {
     setState({ ...data, ...p });
@@ -65,10 +64,13 @@ export default function CommunityTab({ state, setState, longState }) {
   return (
     <div>
       <div className="card">
-        <div className="card-head"><strong>График публикации</strong></div>
+        <div className="card-head"><strong>4 записи YouTube</strong></div>
+        <div className="muted small" style={{ marginBottom: 10 }}>
+          Они появляются здесь автоматически после кнопки «Подготовить 4 Shorts и публикации» во вкладке «Контент недели». Каждая запись относится только к своей теме.
+        </div>
         <div className="row">
           <div className="field" style={{ flex: 1 }}>
-            <label>Дата выхода Long-видео</label>
+            <label>Дата первой публикации</label>
             <input type="date" value={data.baseDate} onChange={(e) => patch({ baseDate: e.target.value })} />
           </div>
           <div className="field" style={{ flex: 1 }}>
@@ -81,7 +83,6 @@ export default function CommunityTab({ state, setState, longState }) {
             />
           </div>
         </div>
-        <button onClick={generate} disabled={!!busy}>Сгенерировать посты для Записей</button>
       </div>
 
       <div className="grid-3">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { callApi } from "../../lib/api.js";
 
 export default function AudienceResearch({ state, setState, onUseTopic, onSaveTopics }) {
   const [channels, setChannels] = useState(state?.audienceChannels || "");
@@ -24,15 +25,9 @@ export default function AudienceResearch({ state, setState, onUseTopic, onSaveTo
     setDiscovering(true);
     setError("");
     try {
-      const response = await fetch("/api/topics?action=discover-channels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: discoverQuery }),
-      });
-      const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error || `Ошибка ${response.status}`);
+      const data = await callApi("topics?action=discover-channels", { query: discoverQuery });
       setCandidates(data.channels || []);
-      setSelected((data.channels || []).slice(0, 8).map((channel) => channel.channelId));
+      setSelected((data.channels || []).slice(0, 4).map((channel) => channel.channelId));
       setState((current) => ({ ...(current || {}), discoverQuery }));
     } catch (err) {
       setError(err.message);
@@ -54,13 +49,7 @@ export default function AudienceResearch({ state, setState, onUseTopic, onSaveTo
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/topics?action=audience", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channels }),
-      });
-      const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error || `Ошибка ${response.status}`);
+      const data = await callApi("topics?action=audience", { channels });
       setState((current) => ({
         ...(current || {}),
         audienceChannels: channels,
@@ -68,7 +57,9 @@ export default function AudienceResearch({ state, setState, onUseTopic, onSaveTo
         audienceMeta: {
           channels: data.scannedChannels,
           comments: data.commentsScanned,
+          analyzedComments: data.commentsAnalyzed,
           quota: data.quotaUsed,
+          skippedChannels: data.skippedChannels,
         },
       }));
     } catch (err) {
@@ -116,7 +107,7 @@ export default function AudienceResearch({ state, setState, onUseTopic, onSaveTo
                   checked={selected.includes(channel.channelId)}
                   onChange={(event) => setSelected((current) =>
                     event.target.checked
-                      ? [...current, channel.channelId].slice(0, 8)
+                      ? [...current, channel.channelId].slice(0, 4)
                       : current.filter((id) => id !== channel.channelId)
                   )}
                 />
@@ -134,7 +125,7 @@ export default function AudienceResearch({ state, setState, onUseTopic, onSaveTo
           </div>
         )}
         <div className="field">
-          <label>Ссылки на YouTube-каналы или @handle — по одному на строку, максимум 8</label>
+          <label>Ссылки на YouTube-каналы или @handle — по одному на строку, максимум 4</label>
           <textarea
             className="channel-input"
             value={channels}
@@ -147,12 +138,15 @@ export default function AudienceResearch({ state, setState, onUseTopic, onSaveTo
           <button onClick={run} disabled={busy || !channels.trim()}>
             {busy ? "Читаю ролики и комментарии…" : "Найти боли аудитории"}
           </button>
-          <span className="muted small">Берём 5 самых просматриваемых из 20 свежих роликов каждого канала.</span>
+          <span className="muted small">Берём 5 сильных роликов каждого канала; запросы обрабатываются небольшими партиями.</span>
         </div>
         {error && <div className="error">{error}</div>}
         {meta && (
           <div className="muted small">
-            Каналов: {meta.channels?.length || 0} · комментариев: {meta.comments} · квота YouTube: ~{meta.quota} единиц
+            Каналов: {meta.channels?.length || 0} · найдено комментариев: {meta.comments}
+            {meta.analyzedComments ? ` · отправлено на анализ: ${meta.analyzedComments}` : ""}
+            {` · квота YouTube: ~${meta.quota} единиц`}
+            {meta.skippedChannels?.length ? ` · пропущено каналов: ${meta.skippedChannels.length}` : ""}
           </div>
         )}
       </div>

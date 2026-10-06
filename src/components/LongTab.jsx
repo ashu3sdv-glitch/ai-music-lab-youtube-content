@@ -2,6 +2,7 @@ import { useState } from "react";
 import { callApi } from "../lib/api.js";
 import LinksPicker from "./LinksPicker.jsx";
 import CopyButton from "./CopyButton.jsx";
+import { buildCustomScriptState } from "../../shared/custom-script.js";
 
 const empty = {
   topic: "",
@@ -12,18 +13,24 @@ const empty = {
   editingPlan: "",
   selectedLinkIds: [],
   topicResearch: null,
+  inputMode: "topic",
+  customTitle: "",
+  customScript: "",
 };
 
 // YouTube Long: тема → хуки → сценарий (+правка) → описание/tags (+правка) → план монтажа.
 // onShortsReady/onCommunityReady/onSocialReady — конвейер «Подготовить тексты»: результаты
 // уходят в состояние вкладок Shorts, Записи и Соцсети (владелец состояния — App).
-export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady, onSocialReady }) {
-  const data = { ...empty, ...state };
+export default function LongTab({ state, setState, links, onShortsReady, onCommunityReady, onSocialReady, onPackageReady }) {
+  // Основной рабочий режим канала сейчас — четыре самостоятельных Shorts.
+  // Старый Long-процесс остаётся ниже в коде, но скрыт до возвращения формата.
+  const data = { ...empty, ...state, inputMode: "custom" };
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [hookFix, setHookFix] = useState("");
   const [scriptFix, setScriptFix] = useState("");
   const [descFix, setDescFix] = useState("");
+  const [customNotice, setCustomNotice] = useState("");
 
   function patch(p) {
     setState({ ...data, ...p });
@@ -156,8 +163,72 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
     }
   };
 
+  async function prepareCustomPackage() {
+    setError("");
+    setCustomNotice("");
+    let next;
+    try {
+      next = buildCustomScriptState({ title: data.customTitle, script: data.customScript });
+    } catch (e) {
+      setError(e.message);
+      return;
+    }
+    try {
+      const payload = { topic: next.topic, script: next.script };
+      setBusy("Готовлю комплект (1/3): четыре Curiosity Story Shorts…");
+      const { shorts } = await callApi("generate-shorts", {
+        mode: "curiosity",
+        title: data.customTitle,
+        material: data.customScript,
+      });
+      setBusy("Готовлю комплект (2/3): четыре записи YouTube…");
+      const { posts } = await callApi("generate-community", { ...payload, shortsSeries: shorts });
+      setBusy("Готовлю комплект (3/3): Telegram и Boosty…");
+      const social = await callApi("generate-social", { ...payload, shortsSeries: shorts });
+      if ((shorts || []).length !== 4 || (posts || []).length !== 4 || (social.telegram || []).length !== 4 || (social.boosty || []).length !== 2) {
+        throw new Error(`Получено не всё: Shorts ${(shorts || []).length}/4, Записи ${(posts || []).length}/4, Telegram ${(social.telegram || []).length}/4, Boosty ${(social.boosty || []).length}/2. Нажмите кнопку ещё раз.`);
+      }
+      patch(next);
+      onShortsReady(shorts);
+      onCommunityReady(posts);
+      onSocialReady(social);
+      onPackageReady?.({ shorts, community: posts, telegram: social.telegram || [], boosty: social.boosty || [] });
+      setCustomNotice("Готово: 4 Shorts, 4 полезные записи YouTube, 4 Telegram и 2 Boosty разложены по своим вкладкам. Во вкладке «Картинки» можно создать 4 квадратные картинки — по одной на тему — и использовать их в YouTube, Telegram и Boosty. Обложки Shorts вы делаете отдельно.");
+    } catch (e) {
+      setError(e.message || "Не удалось подготовить комплект");
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <div>
+      <div className="card">
+        <div className="card-head"><strong>Контент недели: 4 Curiosity Story Shorts</strong><span className="muted small">Один общий сценарий → четыре самостоятельных ролика</span></div>
+        <>
+          <div className="field">
+            <label>Общее название серии — необязательно</label>
+            <input value={data.customTitle} onChange={(e) => patch({ customTitle: e.target.value })} placeholder="Можно оставить пустым: названия четырёх Shorts будут взяты из сценария" />
+          </div>
+          <div className="field">
+            <label>Общий сценарий с четырьмя разделами</label>
+            <textarea className="linkedin-source" value={data.customScript} onChange={(e) => patch({ customScript: e.target.value })} placeholder="Вставьте общий материал. Внутри должны быть четыре темы или четыре смысловых раздела…" />
+          </div>
+          <div className="row">
+            <button onClick={prepareCustomPackage} disabled={!!busy}>
+              {busy.startsWith("Готовлю комплект") ? busy : "Создать 4 Shorts и публикации"}
+            </button>
+          </div>
+          {busy.startsWith("Готовлю комплект") && (
+            <div className="busy" role="status" aria-live="polite">{busy}</div>
+          )}
+          {customNotice && <div className="success" role="status">{customNotice}</div>}
+          {error && <div className="error" role="alert">{error}</div>}
+          <div className="muted small">Каждый раздел станет отдельным сценарием по формуле Hook → вопрос → доказательство → раскрытие → применение. Комплект: 4 Shorts, 4 записи YouTube, 4 Telegram и 2 Boosty. LinkedIn не изменяется.</div>
+        </>
+      </div>
+
+      {data.inputMode === "topic" && <>
       <div className="card">
         <div className="card-head"><strong>1. Тема и хук</strong></div>
         <div className="field">
@@ -210,11 +281,12 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
           </div>
         )}
       </div>
+      </>}
 
-      {data.script && (
+      {data.inputMode === "topic" && data.script && (
         <div className="card">
           <div className="card-head">
-            <strong>2. Сценарий</strong>
+            <strong>{data.topicResearch?.source === "custom-script" ? "Ваш готовый сценарий" : "2. Сценарий"}</strong>
             <CopyButton text={() => data.script} />
           </div>
           <textarea value={data.script} onChange={(e) => patch({ script: e.target.value })} />
@@ -241,14 +313,14 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         </div>
       )}
 
-      {data.script && (
+      {data.inputMode === "topic" && data.script && (
         <div className="card">
           <div className="card-head"><strong>Ссылки в описание</strong></div>
           <LinksPicker links={links} selected={data.selectedLinkIds} onChange={(ids) => patch({ selectedLinkIds: ids })} />
         </div>
       )}
 
-      {data.description && (
+      {data.inputMode === "topic" && data.description && (
         <div className="card">
           <div className="card-head"><strong>3. Описание</strong></div>
           <div className="field">
@@ -306,7 +378,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
         </div>
       )}
 
-      {data.editingPlan && (
+      {data.inputMode === "topic" && data.editingPlan && (
         <div className="card">
           <div className="card-head">
             <strong>4. Мемы и врезки</strong>
@@ -317,7 +389,7 @@ export default function LongTab({ state, setState, links, onShortsReady, onCommu
       )}
 
       {busy && <div className="busy">{busy}</div>}
-      {error && <div className="error">{error}</div>}
+      {error && data.inputMode !== "custom" && <div className="error">{error}</div>}
     </div>
   );
 }

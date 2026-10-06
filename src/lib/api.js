@@ -24,11 +24,16 @@ export function usageToday() {
 // компонентам не нужно явно его прокидывать.
 export async function callApi(endpoint, body) {
   const channelBio = load("channelBio", "");
-  const res = await fetch(`/api/${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(channelBio ? { channelBio, ...body } : body),
-  });
+  let res;
+  try {
+    res = await fetch(`/api/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(channelBio ? { channelBio, ...body } : body),
+    });
+  } catch {
+    throw new Error("Соединение с сервером прервалось. Повторите запрос; если ошибка повторится, выберите меньше каналов.");
+  }
   // Разбираем сами через text(): при оборванном/пустом ответе res.json()
   // превращался в пустой объект, компоненты рисовали «результат» без данных
   // и падали в белый экран. Теперь это честная ошибка с текстом.
@@ -39,11 +44,11 @@ export async function callApi(endpoint, body) {
   } catch {
     // не JSON — ниже отдадим понятную ошибку
   }
+  if (data?._usage) trackUsage(data._usage);
   if (!res.ok || !data || data.error) {
     throw new Error(
       data?.error || (res.ok ? "Сервер вернул неполный ответ — попробуйте ещё раз" : `Ошибка ${res.status}`)
     );
   }
-  if (data._usage) trackUsage(data._usage);
   return data;
 }

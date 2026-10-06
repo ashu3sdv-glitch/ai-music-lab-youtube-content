@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { callApi } from "../lib/api.js";
-import { cropToSize } from "../lib/crop.js";
-import { generateThumbnail } from "../lib/thumbgen.js";
 import { sendTelegramPost } from "../lib/telegram.js";
 import CopyButton from "./CopyButton.jsx";
+import { buildContentWeekItems } from "../../shared/content-week.js";
 
 const OFFSETS = {
-  community: [0, 2 * 24, 5 * 24],
+  community: [0, 2 * 24, 5 * 24, 7 * 24],
   boosty: [24, 4 * 24],
   telegram: [-24, 2, 3 * 24, 6 * 24],
 };
@@ -93,6 +91,9 @@ export default function WeekPlanTab({
   setCommunityState,
   socialState,
   setSocialState,
+  shortsState,
+  thumbState,
+  onOpenImages,
   settings,
 }) {
   const collection = normalizeWeeks(state || {});
@@ -103,8 +104,11 @@ export default function WeekPlanTab({
   const [error, setError] = useState("");
   const sending = useRef(new Set());
   const items = data.items || [];
-  const images = data.images || [];
-  const allPlanned = items.length === 9 && items.every((item) => ["scheduled", "published", "skipped"].includes(item.status));
+  const images = [0, 1, 2, 3].map((index) => {
+    const card = thumbState?.cards?.[`community${index}`];
+    return card?.image ? { label: `Тема ${index + 1}`, square: card.image, prompt: card.prompt, score: card.score } : null;
+  });
+  const allPlanned = items.length === 10 && items.every((item) => ["scheduled", "published", "skipped"].includes(item.status));
 
   const counts = useMemo(() => ({
     community: items.filter((x) => x.platform === "community").length,
@@ -187,71 +191,17 @@ export default function WeekPlanTab({
   }
 
   async function prepareTexts() {
-    if (!longState?.topic && !longState?.script) return setError("Сначала подготовьте тему или сценарий Long-видео");
-    setError("");
-    setBusy("Генерирую 3 + 2 + 4 публикации…");
-    try {
-      const [communityResult, socialResult] = await Promise.all([
-        callApi("generate-community", {
-          topic: longState?.topic,
-          script: longState?.script,
-          synopsis: longState?.description?.synopsis,
-        }),
-        callApi("generate-social", {
-          topic: longState?.topic,
-          script: longState?.script,
-          synopsis: longState?.description?.synopsis,
-        }),
-      ]);
-      const community = (communityResult.posts || []).slice(0, 3);
-      const telegram = (socialResult.telegram || []).slice(0, 4);
-      const boosty = (socialResult.boosty || []).slice(0, 2);
-      if (community.length !== 3 || telegram.length !== 4 || boosty.length !== 2) {
-        throw new Error(`Получено: YouTube ${community.length}/3, Boosty ${boosty.length}/2, Telegram ${telegram.length}/4. Запустите ещё раз.`);
-      }
-      setCommunityState((old) => ({ ...(old || {}), posts: community }));
-      setSocialState({ telegram, boosty });
-      patch({
-        items: buildItems(community, telegram, boosty, data.releaseAt, data.videoUrl, items),
-        preparedAt: new Date().toISOString(),
-      });
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy("");
+    const community = (communityState?.posts || []).slice(0, 4);
+    const telegram = (socialState?.telegram || []).slice(0, 4);
+    const boosty = (socialState?.boosty || []).slice(0, 2);
+    if (community.length !== 4 || telegram.length !== 4 || boosty.length !== 2) {
+      return setError("Сначала подготовьте комплект во вкладке «Контент недели»");
     }
-  }
-
-  async function prepareImages() {
-    if (!settings.openaiKey) return setError("Введите OpenAI API-ключ в Настройках");
-    if (!longState?.topic) return setError("Сначала укажите тему Long-видео");
     setError("");
-    const contexts = [
-      { label: "Главная", people: "молодой взрослый мужчина 20–35 лет", text: longState?.description?.synopsis || longState?.script || longState.topic },
-      { label: "Практическая", people: "молодая взрослая женщина 20–35 лет", text: items.find((x) => x.platform === "boosty")?.text || longState?.script || longState.topic },
-      { label: "Обсуждение", people: "молодые взрослые мужчина и женщина 20–35 лет либо композиция без людей, если она лучше раскрывает тему", text: items.find((x) => x.platform === "telegram" && x.index > 1)?.text || longState?.script || longState.topic },
-    ];
-    const next = [];
-    try {
-      for (let index = 0; index < contexts.length; index++) {
-        const context = contexts[index];
-        const result = await generateThumbnail({
-          settings: { ...settings, maxAttempts: 1 },
-          topic: `${longState.topic}. ${context.label} квадратная иллюстрация без мелкого текста. Персонажи: ${context.people}`,
-          context: `${context.text.slice(0, 3000)}\n\nФормат публикации: квадрат 1:1. Вся надпись, лицо и важные элементы должны полностью помещаться внутри кадра с безопасными отступами от всех краёв. Если в кадре есть люди, показывай только молодых взрослых 20–35 лет: современных, энергичных, естественных; чередуй мужчин и женщин. Не изображай пожилых людей или людей среднего возраста. Не добавляй человека, если предметная, музыкальная или технологическая композиция лучше объясняет тему.`,
-          aspect: "1:1",
-          variant: `weekly-${index + 1}`,
-          onProgress: (message) => setBusy(`Картинка ${index + 1}/3: ${message}`),
-        });
-        const square = await cropToSize(result.image, 1080, 1080);
-        next.push({ label: context.label, square, prompt: result.prompt, score: result.score });
-        patch({ images: [...next, ...images.slice(next.length)] });
-      }
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy("");
-    }
+    patch({
+      items: buildContentWeekItems({ community, telegram, boosty, oldItems: items, startAt: data.releaseAt }),
+      preparedAt: new Date().toISOString(),
+    });
   }
 
   function approveAll() {
@@ -364,44 +314,42 @@ export default function WeekPlanTab({
 
       {activeWeekId && <>
       <div className="card">
-        <div className="card-head"><strong>Подготовить неделю</strong><span className="muted small">1 Long → 9 публикаций → 3 картинки</span></div>
+        <div className="card-head"><strong>План публикаций</strong><span className="muted small">4 Shorts → 10 публикаций → 4 тематические картинки</span></div>
         <div className="week-controls">
           <div className="field">
-            <label>Дата и время выхода Long-видео</label>
+            <label>Начало публикационной недели</label>
             <input type="datetime-local" value={data.releaseAt || ""} onChange={(e) => changeReleaseAt(e.target.value)} />
           </div>
           <div className="field">
-            <label>Ссылка на полное видео</label>
+            <label>Ссылка на канал или плейлист — необязательно</label>
             <input type="url" placeholder="https://youtu.be/..." value={data.videoUrl || ""} onChange={(e) => changeVideoUrl(e.target.value)} />
           </div>
         </div>
         <div className="row">
-          <button onClick={prepareTexts} disabled={!!busy}>1. Подготовить 9 текстов</button>
-          <button onClick={prepareImages} disabled={!!busy || !items.length}>
-            {images.length ? "2. Пересоздать 3 квадратные картинки" : "2. Создать 3 квадратные картинки"}
-          </button>
-          <button onClick={approveAll} disabled={!!busy || items.length !== 9}>
-            {allPlanned ? "✓ 9 публикаций запланированы" : "3. Утвердить и запланировать"}
+          <button onClick={prepareTexts} disabled={!!busy}>1. Обновить из готовых вкладок</button>
+          <button onClick={onOpenImages} disabled={!!busy || !items.length}>2. Открыть картинки</button>
+          <button onClick={approveAll} disabled={!!busy || items.length !== 10}>
+            {allPlanned ? "✓ 10 публикаций запланированы" : "3. Утвердить и запланировать"}
           </button>
         </div>
-        <div className="muted small">YouTube: {counts.community}/3 · Boosty: {counts.boosty}/2 · Telegram: {counts.telegram}/4. Автоотправка Telegram сработает в назначенное время, пока эта страница открыта.</div>
+        <div className="muted small">YouTube: {counts.community}/4 · Boosty: {counts.boosty}/2 · Telegram: {counts.telegram}/4. Автоотправка Telegram сработает в назначенное время, пока эта страница открыта.</div>
         {allPlanned && <div className="success">Готово: публикации утверждены и получили статус «Запланировано».</div>}
         {busy && <div className="busy">{busy}</div>}
         {error && <div className="error">{error}</div>}
       </div>
 
-      {images.length > 0 && (
+      {images.some(Boolean) && (
         <div className="card">
-          <div className="card-head"><strong>Три квадратные картинки</strong><span className="muted small">единый формат 1080 × 1080 для всех площадок</span></div>
+          <div className="card-head"><strong>Четыре квадратные картинки</strong><span className="muted small">по одной на тему; переиспользуются в YouTube, Telegram и Boosty</span></div>
           <div className="week-images">
             {images.map((image, index) => (
-              <div key={index}>
+              image ? <div key={index}>
                 <img src={image.square} alt={image.label} />
                 <strong className="small">{index + 1}. {image.label}</strong>
                 <div className="row small">
                   <button className="link" onClick={() => downloadImage(image, "community", index)}>Скачать 1080 × 1080</button>
                 </div>
-              </div>
+              </div> : null
             ))}
           </div>
         </div>
@@ -426,7 +374,7 @@ export default function WeekPlanTab({
                 <div className="field">
                   <label>Картинка</label>
                   <select value={item.imageIndex} onChange={(e) => updateItem(item.id, { imageIndex: Number(e.target.value) })}>
-                    {[0, 1, 2].map((index) => <option key={index} value={index}>Картинка {index + 1}</option>)}
+                    {[0, 1, 2, 3].map((index) => <option key={index} value={index}>Картинка {index + 1}</option>)}
                   </select>
                 </div>
                 <div className="field">

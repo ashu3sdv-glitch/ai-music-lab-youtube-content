@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 // Кнопка «копировать в буфер» рядом с полем — чтобы не выделять текст вручную.
-export default function CopyButton({ text }) {
+export default function CopyButton({ text, label = "Копировать" }) {
   const [done, setDone] = useState(false);
 
   async function copy() {
@@ -24,7 +24,7 @@ export default function CopyButton({ text }) {
 
   return (
     <button type="button" className="copy-btn" onClick={copy} title="Скопировать в буфер обмена">
-      {done ? "✓ Скопировано" : "⧉ Копировать"}
+      {done ? "✓ Скопировано" : `⧉ ${label}`}
     </button>
   );
 }

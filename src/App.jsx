@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLargePersistentState, usePersistentState } from "./lib/storage.js";
 import { usageToday } from "./lib/api.js";
+import { withDescriptionLinks } from "./lib/descriptionLinks.js";
+import {
+  normalizeLinkedInState,
+  normalizeSavedTopicsState,
+  normalizeTopicsState,
+  normalizeWeekPlanState,
+} from "./lib/persistedState.js";
 
 // Бейдж расходов Claude в шапке: последний запрос + итог за сегодня.
 // Считает только текстовые генерации (Anthropic); картинки — счёт OpenAI.
@@ -31,21 +38,28 @@ import SavedTopicsTab from "./components/SavedTopicsTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
 import TopicsPanel from "./modules/Topics/TopicsPanel.jsx";
 import WeekPlanTab from "./components/WeekPlanTab.jsx";
+import LinkedInTab from "./components/LinkedInTab.jsx";
+import TabErrorBoundary from "./components/TabErrorBoundary.jsx";
+import FilmStudioTab from "./components/FilmStudioTab.jsx";
+import { syncContentPackageToWeek } from "../shared/content-week.js";
+import { normalizeFilmState } from "../shared/film-studio.js";
 
-const TABS = [
-  { id: "topics", label: "Темы" },
-  { id: "week", label: "План недели" },
-  { id: "long", label: "YouTube Long" },
+const MUSIC_TABS = [
+  { id: "long", label: "Контент недели" },
   { id: "shorts", label: "Shorts" },
-  { id: "thumbnails", label: "Обложки" },
-  { id: "timecodes", label: "Таймкоды" },
-  { id: "community", label: "Записи" },
-  { id: "social", label: "Соцсети" },
+  { id: "community", label: "Записи YouTube" },
+  { id: "social", label: "Telegram + Boosty" },
+  { id: "thumbnails", label: "Картинки" },
+  { id: "week", label: "План публикаций" },
+  { id: "topics", label: "Темы" },
   { id: "analyze", label: "Анализ видео" },
   { id: "ideas", label: "Идеи" },
   { id: "saved-topics", label: "Сохранённые темы" },
   { id: "settings", label: "Настройки" },
 ];
+
+const BUSINESS_TABS = [{ id: "linkedin", label: "LinkedIn" }];
+const FILM_TABS = [{ id: "film-studio", label: "AI Film Studio" }];
 
 const defaultSettings = {
   openaiKey: "",
@@ -59,6 +73,7 @@ const defaultSettings = {
 
 export default function App() {
   const [tab, setTab] = useState("long");
+  const [lastContentTab, setLastContentTab] = useState("long");
   const [theme, setTheme] = usePersistentState("theme", "light");
   const [links, setLinks] = usePersistentState("links", []);
   const [settings, setSettings] = usePersistentState("settings", defaultSettings);
@@ -68,11 +83,13 @@ export default function App() {
   const [timecodesState, setTimecodesState] = usePersistentState("timecodes", {});
   const [communityState, setCommunityState] = usePersistentState("community", {});
   const [socialState, setSocialState] = usePersistentState("social", {});
-  const [weekState, setWeekState] = useLargePersistentState("week-plan", {});
+  const [weekState, setWeekState] = useLargePersistentState("week-plan", {}, normalizeWeekPlanState);
   const [analyzeState, setAnalyzeState] = usePersistentState("analyze", {});
   const [ideas, setIdeas] = usePersistentState("ideas", []);
-  const [topicsState, setTopicsState] = useLargePersistentState("topics", {});
-  const [savedTopics, setSavedTopics] = useLargePersistentState("saved-topics", []);
+  const [topicsState, setTopicsState] = useLargePersistentState("topics", {}, normalizeTopicsState);
+  const [savedTopics, setSavedTopics] = useLargePersistentState("saved-topics", [], normalizeSavedTopicsState);
+  const [linkedinState, setLinkedinState] = useLargePersistentState("linkedin", {}, normalizeLinkedInState);
+  const [filmState, setFilmState, filmStateMeta] = useLargePersistentState("film-studio", {}, normalizeFilmState);
 
   const saveFoundTopics = useCallback((items, context = {}) => {
     if (!items?.length) return;
@@ -112,6 +129,9 @@ export default function App() {
       script: "",
       description: null,
       editingPlan: "",
+      inputMode: "custom",
+      customTitle: result.query,
+      customScript: "",
       topicResearch: {
         topic: result.query,
         score: result.score,
@@ -127,26 +147,62 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  useEffect(() => {
+    if (tab !== "film-studio") setLastContentTab(tab);
+  }, [tab]);
+
+  const isFilmWorkspace = tab === "film-studio";
+
   return (
-    <div>
-      <div className="top-row">
-        <h1>AI Music Lab — YouTube Content</h1>
+    <div className={`app-shell ${isFilmWorkspace ? "film-workspace-shell" : "content-workspace-shell"}`}>
+      {isFilmWorkspace ? <div className="film-workspace-header">
+        <button className="secondary" onClick={() => setTab(lastContentTab)}>← Вернуться в Content Studio</button>
+        <div className="film-workspace-title"><span className="film-kicker">ОТДЕЛЬНОЕ РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>AI Film Studio</h1></div>
         <CostBadge />
         <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
           {theme === "light" ? "🌙 Тёмная тема" : "☀️ Светлая тема"}
         </button>
-      </div>
-      <div className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`tab-btn ${tab === t.id ? "active" : ""}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
+      </div> : <>
+        <div className="top-row">
+          <h1>AI Content Studio</h1>
+          <CostBadge />
+          <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+            {theme === "light" ? "🌙 Тёмная тема" : "☀️ Светлая тема"}
           </button>
-        ))}
-      </div>
+        </div>
+        <div className="tab-sections">
+        <div className="tab-section">
+          <span className="tab-section-label">YouTube · AI Music Lab</span>
+          <div className="tabs">
+            {MUSIC_TABS.map((t) => (
+              <button key={t.id} className={`tab-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="tab-section business-tabs">
+          <span className="tab-section-label">LinkedIn · AI и бизнес</span>
+          <div className="tabs">
+            {BUSINESS_TABS.map((t) => (
+              <button key={t.id} className={`tab-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="tab-section film-tabs">
+          <span className="tab-section-label">YouTube · фантастические фильмы</span>
+          <div className="tabs">
+            {FILM_TABS.map((t) => (
+              <button key={t.id} className={`tab-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        </div>
+      </>}
 
       {/* Все вкладки остаются смонтированными и только скрываются через CSS —
           иначе переключение вкладки размонтирует компонент и оборвёт
@@ -158,40 +214,60 @@ export default function App() {
           setState={setLongState}
           links={links}
           onShortsReady={(shorts) =>
-            setShortsState({
-              cards: (shorts || []).slice(0, 3).map((s) => ({
+            setShortsState((current) => ({
+              cards: (shorts || []).slice(0, 4).map((s, i) => ({
+                ...s,
                 topic: s.topic || "",
                 titles: s.titles || null,
-                description: s.description || "",
-                selectedLinkIds: [],
+                description: withDescriptionLinks(
+                  s.description || "",
+                  links,
+                  links.map((link) => link.id)
+                ),
+                selectedLinkIds: links.map((link) => link.id),
               })),
-            })
+            }))
           }
           onCommunityReady={(posts) => setCommunityState((prev) => ({ ...(prev || {}), posts }))}
           onSocialReady={({ telegram, boosty }) =>
             setSocialState({ telegram: telegram || [], boosty: boosty || [] })
           }
+          onPackageReady={({ community, telegram, boosty }) =>
+            setWeekState((current) => syncContentPackageToWeek(current, {
+              title: longState.customTitle,
+              community,
+              telegram,
+              boosty,
+            }, { id: crypto.randomUUID() }))
+          }
         />
       </div>
       <div style={{ display: tab === "topics" ? "block" : "none" }}>
-        <TopicsPanel
-          state={topicsState}
-          setState={setTopicsState}
-          onUseTopic={useTopicInScript}
-          onSaveTopics={saveFoundTopics}
-        />
+        <TabErrorBoundary label="Темы" onReset={() => setTopicsState({})}>
+          <TopicsPanel
+            state={topicsState}
+            setState={setTopicsState}
+            onUseTopic={useTopicInScript}
+            onSaveTopics={saveFoundTopics}
+          />
+        </TabErrorBoundary>
       </div>
       <div style={{ display: tab === "week" ? "block" : "none" }}>
-        <WeekPlanTab
-          state={weekState}
-          setState={setWeekState}
-          longState={longState}
-          communityState={communityState}
-          setCommunityState={setCommunityState}
-          socialState={socialState}
-          setSocialState={setSocialState}
-          settings={settings}
-        />
+        <TabErrorBoundary label="План недели" onReset={() => setWeekState({})}>
+          <WeekPlanTab
+            state={weekState}
+            setState={setWeekState}
+            longState={longState}
+            communityState={communityState}
+            setCommunityState={setCommunityState}
+            socialState={socialState}
+            setSocialState={setSocialState}
+            shortsState={shortsState}
+            thumbState={thumbState}
+            onOpenImages={() => setTab("thumbnails")}
+            settings={settings}
+          />
+        </TabErrorBoundary>
       </div>
       <div style={{ display: tab === "shorts" ? "block" : "none" }}>
         <ShortsTab state={shortsState} setState={setShortsState} links={links} longState={longState} />
@@ -222,10 +298,22 @@ export default function App() {
         <IdeasTab ideas={ideas} setIdeas={setIdeas} />
       </div>
       <div style={{ display: tab === "saved-topics" ? "block" : "none" }}>
-        <SavedTopicsTab topics={savedTopics} setTopics={setSavedTopics} onUseTopic={useTopicInScript} />
+        <TabErrorBoundary label="Сохранённые темы" onReset={() => setSavedTopics([])}>
+          <SavedTopicsTab topics={savedTopics} setTopics={setSavedTopics} onUseTopic={useTopicInScript} />
+        </TabErrorBoundary>
       </div>
       <div style={{ display: tab === "settings" ? "block" : "none" }}>
         <SettingsTab links={links} setLinks={setLinks} settings={settings} setSettings={setSettings} />
+      </div>
+      <div style={{ display: tab === "linkedin" ? "block" : "none" }}>
+        <TabErrorBoundary label="LinkedIn" onReset={() => setLinkedinState({})}>
+          <LinkedInTab state={linkedinState} setState={setLinkedinState} settings={settings} />
+        </TabErrorBoundary>
+      </div>
+      <div style={{ display: tab === "film-studio" ? "block" : "none" }}>
+        <TabErrorBoundary label="AI Film Studio" onReset={() => setFilmState({})}>
+          <FilmStudioTab state={filmState} setState={setFilmState} stateReady={filmStateMeta.ready} />
+        </TabErrorBoundary>
       </div>
     </div>
   );

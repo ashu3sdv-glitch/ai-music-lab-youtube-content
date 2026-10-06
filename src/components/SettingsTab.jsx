@@ -55,7 +55,8 @@ export default function SettingsTab({ links, setLinks, settings, setSettings }) 
       <div className="card">
         <div className="card-head"><strong>Библиотека ссылок</strong></div>
         <div className="muted small" style={{ marginBottom: 10 }}>
-          Ссылки, которые можно точечно подставлять в описания (Long, Shorts) чекбоксами.
+          В Shorts все сохранённые здесь ссылки добавляются в каждое описание автоматически.
+          Для Long-видео ссылки по-прежнему можно выбирать отдельно.
         </div>
         {links.map((l) => (
           <div className="link-item" key={l.id}>

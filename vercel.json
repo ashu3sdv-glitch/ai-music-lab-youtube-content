@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     { "source": "/api/suggest", "destination": "/api/topics?action=suggest" },
-    { "source": "/api/analyze", "destination": "/api/topics?action=analyze" }
+    { "source": "/api/analyze", "destination": "/api/topics?action=analyze" },
+    { "source": "/api/generate-linkedin", "destination": "/api/topics?action=linkedin" }
   ],
   "functions": {
     "api/*.js": {

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "npm run embed-skills && vite build",
     "preview": "vite preview",
+    "test": "node --test",
     "embed-skills": "node scripts/embed-skills.mjs"
   },
   "dependencies": {
